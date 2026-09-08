@@ -26,7 +26,7 @@ search that is honest about where it stops.
 [![SAIR](https://img.shields.io/badge/SAIR-Andrews–Curtis-340825)](https://competition.sair.foundation/competitions/acc/overview)
 [![Status](https://img.shields.io/badge/Status-Pre_registration-D29922)](https://competition.sair.foundation/competitions/acc/overview)
 [![Technology](https://img.shields.io/badge/Technology-Python_3.10+-8250DF)](https://www.python.org/)
-[![Tracks](https://img.shields.io/badge/Tracks-Discovery_|_Proof-0969DA)](https://competition.sair.foundation/competitions/acc/overview)
+[![Tracks](https://img.shields.io/badge/Tracks-Discovery_|_Proof-3949AB)](https://competition.sair.foundation/competitions/acc/overview)
 [![Author](https://img.shields.io/badge/Author-Amey_Thakur-0969DA)](https://github.com/Amey-Thakur)
 [![License](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey)](LICENSE)
 
