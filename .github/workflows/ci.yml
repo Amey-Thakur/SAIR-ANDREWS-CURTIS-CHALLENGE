@@ -1,0 +1,86 @@
+## Name: ci.yml
+## Purpose: Gate the moves and the verifier, which are the only things a
+##   submitted move sequence depends on.
+## Description: Half the suite is refusals, because a verifier that quietly
+##   repairs an illegal move accepts a path nobody walked. The second job runs
+##   the checker on the example solutions as a process, since the exit code is
+##   what a submission pipeline reads and a test that calls the function is not
+##   the same thing. No install step beyond pytest: the package is standard
+##   library only by design. Third-party actions are pinned to commit SHAs.
+## Tech Stack: GitHub Actions, Python
+## License: CC BY 4.0
+## Authors: Amey Thakur (https://github.com/Amey-Thakur)
+## Date: 2026-09-08
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "solutions/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "solutions/**"
+      - ".github/workflows/ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: The suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pytest, and nothing else
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run the suite
+        run: python -m pytest tests -q
+
+  solutions:
+    name: The example solutions verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+
+      - name: Every example replays
+        run: python -m src.harness.check_solution solutions/example.json
+
+      - name: A sequence that stops short is refused
+        run: |
+          cat > /tmp/short.json <<'JSON'
+          {"id": "ak2-unfinished", "problem": "ac", "rank": 2,
+           "relators": [[1, 1, -2, -2, -2], [1, 2, 1, -2, -1, -2]],
+           "moves": []}
+          JSON
+          set +e
+          python -m src.harness.check_solution /tmp/short.json
+          test $? -eq 1
+
+      - name: The baseline still trivialises AK(2)
+        run: |
+          python - <<'PY'
+          from src.ac.presentation import AK
+          from src.ac.verify import verify
+          from src.search.best_first import best_first
+          moves, stats = best_first(AK(2), budget=60000)
+          assert moves is not None, "AK(2) was not reached inside the budget"
+          assert verify(AK(2), moves), "the path found does not replay"
+          print(f"AK(2) in {len(moves)} moves, verified")
+          PY

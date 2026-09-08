@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this Andrews-Curtis trivialisation research, please cite it as below."
+authors:
+- family-names: "Thakur"
+  given-names: "Amey"
+  orcid: "https://orcid.org/0000-0001-5644-1575"
+title: "SAIR Andrews-Curtis Conjecture Challenge: Short Trivialisations of Balanced Presentations"
+version: 1.0.0
+date-released: 2026-09-08
+url: "https://github.com/Amey-Thakur/SAIR-ANDREWS-CURTIS-CHALLENGE"
+repository-code: "https://github.com/Amey-Thakur/SAIR-ANDREWS-CURTIS-CHALLENGE"
+license: CC-BY-4.0
+keywords:
+  - andrews-curtis conjecture
+  - combinatorial group theory
+  - balanced presentations
+  - trivial group
+  - free groups
+  - heuristic search

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "example-trivial",
+    "problem": "ac",
+    "rank": 2,
+    "relators": [[1], [2]],
+    "moves": [
+      {"move": "invert", "i": 0},
+      {"move": "invert", "i": 0}
+    ]
+  },
+  {
+    "id": "example-stable",
+    "problem": "stable-ac",
+    "rank": 2,
+    "relators": [[1], [2]],
+    "moves": [
+      {"move": "destabilize", "i": 1},
+      {"move": "destabilize", "i": 0}
+    ]
+  }
+]
