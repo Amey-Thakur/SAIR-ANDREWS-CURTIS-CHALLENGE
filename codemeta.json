@@ -1,10 +1,14 @@
 {
   "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
   "@type": "SoftwareSourceCode",
-  "license": "https://spdx.org/licenses/CC-BY-4.0.html",
   "name": "SAIR Andrews-Curtis Conjecture Challenge",
-  "version": "1.0.0",
-  "runtimePlatform": "Python 3.10+",
+  "description": "Short trivialisations of balanced presentations of the trivial group, for the SAIR Foundation Andrews-Curtis Conjecture Challenge. The Andrews-Curtis moves, a verifier that replays a submitted move sequence and refuses one it cannot finish, and a measured baseline search.",
+  "identifier": "SAIR-ANDREWS-CURTIS-CHALLENGE",
+  "license": "https://spdx.org/licenses/CC-BY-4.0.html",
+  "programmingLanguage": [
+    "Python",
+    "Markdown"
+  ],
   "author": [
     {
       "@type": "Person",
@@ -13,9 +17,34 @@
       "id": "https://orcid.org/0000-0001-5644-1575"
     }
   ],
-  "description": "Short trivialisations of balanced presentations of the trivial group, for the SAIR Foundation Andrews-Curtis Conjecture Challenge. The Andrews-Curtis moves, a verifier that replays a submitted move sequence and refuses one it cannot finish, and a measured baseline search.",
-  "programmingLanguage": [
-    "Python",
-    "Markdown"
-  ]
+  "dateCreated": "2026-09-08",
+  "dateReleased": "2026-09-08",
+  "codeRepository": "https://github.com/Amey-Thakur/SAIR-ANDREWS-CURTIS-CHALLENGE",
+  "developmentStatus": "active",
+  "runtimePlatform": "Python 3.10+",
+  "keywords": [
+    "Andrews-Curtis",
+    "Andrews-Curtis Conjecture",
+    "Balanced Presentations",
+    "Caltech",
+    "Combinatorial Group Theory",
+    "Competition",
+    "Computational Mathematics",
+    "Free Groups",
+    "Group Presentations",
+    "Group Theory",
+    "Heuristic Search",
+    "Mathematics",
+    "Open Problem",
+    "SAIR",
+    "SAIR Foundation",
+    "Trivial Group",
+    "Amey Thakur",
+    "amey",
+    "ameythakur",
+    "amey-thakur",
+    "ameyarc"
+  ],
+  "url": "https://competition.sair.foundation/competitions/acc/overview",
+  "version": "1.0.0"
 }

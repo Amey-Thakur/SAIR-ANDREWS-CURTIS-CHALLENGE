@@ -1,0 +1,32 @@
+# Andrews-Curtis Conjecture Challenge
+
+> Andrews-Curtis Conjecture Challenge. The elementary moves on balanced
+> presentations, a verifier that replays a submitted trivialisation and
+> refuses one it cannot finish, and a measured baseline search, for the
+> SAIR Foundation competition.
+
+Author: Amey Thakur, ORCID 0000-0001-5644-1575
+Licence: CC BY 4.0, attribution required
+Repository created: 8 September 2026
+
+## What is in this repository
+
+- docs, 6 files
+- solutions, 1 file
+- src, 11 files
+- tests, 4 files
+
+## Subject terms
+
+andrews-curtis, andrews-curtis-conjecture, balanced-presentations,
+caltech, combinatorial-group-theory, competition,
+computational-mathematics, free-groups, group-presentations,
+group-theory, heuristic-search, mathematics, open-problem, sair,
+sair-foundation, trivial-group
+
+## Where this sits
+
+- This repository: https://github.com/Amey-Thakur/SAIR-ANDREWS-CURTIS-CHALLENGE
+- Project page: https://competition.sair.foundation/competitions/acc/overview
+- Author: https://github.com/Amey-Thakur
+- Research notes and reflections: https://amey-thakur.github.io/
