@@ -26,7 +26,7 @@ def load(obj):
     Expected shape, which follows the challenge's own description of a
     solution as an id and a list of moves:
 
-        {"id": "...", "problem": "ac" | "stable-ac",
+        {"id": "...", "problem": "ac" | "stable_ac",
          "rank": 2, "relators": [[1, 1, -2, -2, -2], [...]],
          "moves": [{"move": "invert", "i": 0}, ...]}
     """
@@ -36,8 +36,10 @@ def load(obj):
         if key not in obj:
             raise ValueError(f"missing {key!r}")
     problem = obj["problem"]
-    if problem not in ("ac", "stable-ac"):
-        raise ValueError(f"problem must be ac or stable-ac, not {problem!r}")
+    if problem == "stable-ac":             # the pre-launch spelling
+        problem = "stable_ac"
+    if problem not in ("ac", "stable_ac"):
+        raise ValueError(f"problem must be ac or stable_ac, not {problem!r}")
     start = presentation(int(obj["rank"]),
                          *[tuple(int(x) for x in r) for r in obj["relators"]])
     return obj.get("id", "?"), problem, start, moves_from_json(obj["moves"])
@@ -49,7 +51,7 @@ def check(obj):
         cid, problem, start, moves = load(obj)
     except ValueError as exc:
         return False, f"malformed solution: {exc}"
-    result = verify(start, moves, stable=(problem == "stable-ac"))
+    result = verify(start, moves, stable=(problem == "stable_ac"))
     if result:
         return True, (f"{cid}: {problem} verified in {result.steps} moves "
                       f"from {start}")

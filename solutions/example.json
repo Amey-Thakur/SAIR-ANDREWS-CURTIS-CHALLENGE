@@ -11,7 +11,7 @@
   },
   {
     "id": "example-stable",
-    "problem": "stable-ac",
+    "problem": "stable_ac",
     "rank": 2,
     "relators": [[1], [2]],
     "moves": [

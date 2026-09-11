@@ -39,3 +39,10 @@ README.md.bak
 *.tar.gz
 *.rar
 *.7z
+
+# Local campaign tooling, not published while the competition runs.
+src/search/engine.py
+src/search/campaign.py
+src/harness/submit.py
+src/harness/launch_watch.py
+tests/test_engine.py

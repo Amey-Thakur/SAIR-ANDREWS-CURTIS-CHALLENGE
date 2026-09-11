@@ -133,7 +133,7 @@ def test_the_checker_reports_a_malformed_solution():
 
 def test_the_checker_rejects_an_unknown_problem():
     ok, message = check(dict(GOOD, problem="unstable-ac"))
-    assert not ok and "ac or stable-ac" in message
+    assert not ok and "ac or stable_ac" in message
 
 
 def test_the_cli_exits_zero_only_when_everything_verifies(tmp_path):
