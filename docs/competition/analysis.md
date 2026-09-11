@@ -74,7 +74,7 @@ the same scrutiny.
 
 | Not done | Why |
 | :--- | :--- |
-| A submission client | The official format arrives at launch, and guessing it now would only have to be rewritten |
+| A submission client in this repository | The official format is now published, and the organisers ship a reference verifier that is the authority on whether a path replays. Tooling that talks to the submission API is kept out of a public repository while the competition runs |
 | A lower bound on any path | Nothing in this repository certifies minimality, so no figure here claims it |
 | A proof-track argument | The conjecture is sixty years old, and a repository implying otherwise would be worth less than one that does not |
 

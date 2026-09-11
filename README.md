@@ -25,7 +25,7 @@ search that is honest about where it stops.
 
 [![License](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey)](LICENSE)
 [![SAIR](https://img.shields.io/badge/SAIR-Andrews–Curtis-340825)](https://competition.sair.foundation/competitions/acc/overview)
-[![Status](https://img.shields.io/badge/Status-Pre_registration-D29922)](https://competition.sair.foundation/competitions/acc/overview)
+[![Status](https://img.shields.io/badge/Status-Discovery_open-2EA043)](https://competition.sair.foundation/competitions/acc/overview)
 [![Technology](https://img.shields.io/badge/Technology-Python_3.10+-8250DF)](https://www.python.org/)
 [![Tracks](https://img.shields.io/badge/Tracks-Discovery_|_Proof-3949AB)](https://competition.sair.foundation/competitions/acc/overview)
 [![Author](https://img.shields.io/badge/Author-Amey_Thakur-0969DA)](https://github.com/Amey-Thakur)
@@ -109,8 +109,12 @@ relator.
 
 ## What this repository does
 
-The competition's own repository, playground and submission format arrive at
-launch. Until then this holds the parts that do not depend on them.
+The Discovery Track opened on 11 September 2026. The organisers publish the
+challenge data, the numbered move specifications and a reference verifier in
+the [official challenge repository](https://github.com/SAIRcompetition/Andrews-Curtis),
+and the submission contract in the [API documentation](https://docs.sair.foundation/docs/endpoints/competitions/acc/).
+This repository holds the independent parts: the moves, the verifier, a
+measured baseline, and the reading order.
 
 | Path | What it holds |
 | :--- | :--- |
