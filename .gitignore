@@ -29,7 +29,16 @@ venv/
 *.old
 
 # Search output and solution bundles, which are large and reproducible
-runs/
+# Campaign working data stays private while the competition runs: the solution
+# move sequences are the valuable part and publishing them would let any team
+# resubmit our paths verbatim. The solvers and the research record are public,
+# which is what the Proof Track submission needs corroborated.
+runs/*
+!runs/CAMPAIGN_RUNBOOK.md
+!runs/campaign_log.md
+!runs/pool/
+runs/pool/*
+!runs/pool/*.py
 solutions/*.json
 !solutions/example.json
 
@@ -40,9 +49,5 @@ README.md.bak
 *.rar
 *.7z
 
-# Local campaign tooling, not published while the competition runs.
-src/search/engine.py
-src/search/campaign.py
-src/harness/submit.py
-src/harness/launch_watch.py
-tests/test_engine.py
+# Campaign tooling is published so the Proof Track results can be reproduced.
+# The API key is read from SAIR_API_KEY and never appears in any file.
