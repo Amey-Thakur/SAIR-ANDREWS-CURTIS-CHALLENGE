@@ -603,3 +603,32 @@ overestimates on some states, which removes A*'s optimality guarantee; lowering
 the weight trades nodes back for exactness. Being faster does not help here,
 because the binding constraint is never speed on the reachable band, it is reach
 on the unreachable one.
+
+## 2026-09-13, the stratification is two-sided, and it is the campaign's result
+
+Targeting was sharpened twice and the answer did not change.
+
+- **Searches were re-deriving our own holdings.** The 12M-node probe reported a win on
+  ac-09058, which is already in the ledger. True yield of that run: 0 new from 17.
+  `bestfirst.py` now takes `--skip-held` and `--max-k`.
+- **Aimed at what is actually worth points**, unheld challenges with k <= 2 at records
+  19-30, where a match pays 0.25 to 0.50: **0 scoring from 16**.
+
+Putting both sides together:
+
+| reachable | holders | a match pays | measured |
+|---|---|---|---|
+| record <= 18 | 6 to 13 | ~0.008 | all but 1 already held |
+| record 19, k=6 | 6 | 0.008 | reached |
+| record 19-30, k <= 2 | 1 to 2 | 0.25 to 0.50 | **0 of 16** |
+
+**What we can reach is worthless and what is valuable we cannot reach.** These are the
+same fact seen from two sides: a record stays single-held because it is hard, and
+becomes widely shared because it is easy. The scoring rule 2^(1-k) then guarantees
+that the accessible records pay almost nothing.
+
+This is why the score does not move, and it is a sharper statement than "our solver is
+too weak". The pool is stratified so that solver competence and point value are
+anti-correlated, and no amount of targeting inside a fixed competence boundary escapes
+it. Value distribution in records 19-30 alone: 73 unheld at k=1 worth 0.5 each, 45 at
+k=2 worth 0.25, about 48 points, all of it behind the boundary.
