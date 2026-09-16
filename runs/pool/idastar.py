@@ -115,7 +115,8 @@ def _dfs(pw0, pw1, pl0, pl1, phash, path, depth, g, bound, hw, weight,
 
 
 @njit(cache=False)
-def search(r0, n0, r1, n1, hw, weight, wordcap, budget, table_bits, max_rounds):
+def search(r0, n0, r1, n1, hw, weight, wordcap, budget, table_bits, max_rounds,
+           start_bound):
     size = 1 << table_bits if table_bits > 0 else 1
     tmask = np.uint64(size - 1) if table_bits > 0 else np.uint64(0)
     tk = np.zeros(size, dtype=np.uint64)
@@ -136,7 +137,14 @@ def search(r0, n0, r1, n1, hw, weight, wordcap, budget, table_bits, max_rounds):
     pl1[0] = n1
     phash[0] = _hash(r0, n0, r1, n1)
 
-    bound = weight * _h(hw, r0, n0, r1, n1)
+    # Starting the bound AT the record turns the search into a decision
+    # problem: is there a path of at most that length? A* has already given us
+    # an upper bound, so optimising from the heuristic upward wastes the
+    # iterations below the record that cannot score anyway.
+    if start_bound > 0.0:
+        bound = start_bound
+    else:
+        bound = weight * _h(hw, r0, n0, r1, n1)
     total = 0
     for _ in range(max_rounds):
         for i in range(size):
@@ -167,12 +175,12 @@ def weights():
 
 
 def solve(relators, weight=1.0, budget=40_000_000, table_bits=22,
-          wordcap=MAXLEN - 2, max_rounds=60):
+          wordcap=MAXLEN - 2, max_rounds=60, start_bound=0.0):
     r0 = np.array(relators[0], dtype=np.int8)
     r1 = np.array(relators[1], dtype=np.int8)
     found, path, nodes, bound = search(r0, len(r0), r1, len(r1), weights(),
                                        weight, wordcap, budget, table_bits,
-                                       max_rounds)
+                                       max_rounds, start_bound)
     if not found:
         return None, int(nodes)
     # the path length is the bound reached, recovered by replaying
@@ -202,6 +210,9 @@ def main():
     ap.add_argument("--limit", type=int, default=2000)
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--nshards", type=int, default=1)
+    ap.add_argument("--at-record", action="store_true",
+                    help="start the f bound at the record: ask only whether a "
+                         "path that would score exists, not what the optimum is")
     ap.add_argument("--shorten", action="store_true")
     ap.add_argument("--out", default="runs/pool/ida")
     args = ap.parse_args()
@@ -257,11 +268,12 @@ def main():
     with (out / "solutions.jsonl").open("a", encoding="utf-8") as log:
         for r in band:
             start = tuple(tuple(w) for w in r["relators"])
-            t0 = time.time()
-            ids, nodes = solve(r["relators"], args.weight, args.budget,
-                               args.table_bits)
-            dt_s = time.time() - t0
             rec = r["ac_best"]
+            t0 = time.time()
+            sb = float(rec) if args.at_record else 0.0
+            ids, nodes = solve(r["relators"], args.weight, args.budget,
+                               args.table_bits, MAXLEN - 2, 60, sb)
+            dt_s = time.time() - t0
             if not ids:
                 print(f"  {r['ac_id']} record {rec:>4}: none "
                       f"({nodes:,} nodes, {dt_s:.1f}s)", flush=True)

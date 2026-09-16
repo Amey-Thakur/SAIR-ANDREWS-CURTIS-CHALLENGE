@@ -167,6 +167,35 @@ the cases checked. For a presentation with record $8$ shared ten ways, the searc
 returns $8$ at every slack $s \in [1, 8]$, witnessing optimality. **Zero of $61$**
 such attempts yielded an improvement.
 
+## 6b. Asking the decision question instead of the optimisation question
+
+Every search above optimises: it works upward from the heuristic estimate and
+spends most of its budget on path lengths that could not score even if found.
+Only one question pays, and it is binary: **does a path of at most the record
+length exist?**
+
+Starting the iterative-deepening bound *at the record* asks exactly that, and
+the upper bound needed to make it well posed comes free from the weighted A* of
+the previous section. Measured on unheld $k \leq 2$ challenges at records 21 to
+30, memory $O(	ext{depth})$, budget $1.5 	imes 10^8$ states:
+
+| challenge | record | outcome |
+|---|---:|---|
+| ac-07351 | 24 | space **exhausted** at $7.6 	imes 10^7$ states |
+| ac-06403 | 22 | budget consumed, undecided |
+| ac-02353 | 24 | budget consumed, undecided |
+
+The first line is a genuine, if small, negative result: within the word cap of
+42 there is **no Andrews-Curtis path of length at most 24** for that
+presentation, and the search terminated by exhaustion rather than by running
+out of budget. The same method applied at scale would partition the pool into
+challenges provably out of reach at a given length and challenges merely
+unreached, which is a sharper object than a leaderboard position.
+
+It does not, however, score. Reformulating the question concentrated the budget
+without changing the outcome, which is the fifth search architecture to behave
+that way here.
+
 ## 7. Two further negative results
 
 **The abelianisation test is sound but empty here.** A balanced presentation of
