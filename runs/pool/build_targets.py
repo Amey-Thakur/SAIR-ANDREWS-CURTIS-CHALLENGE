@@ -56,6 +56,28 @@ for cid, ln in mine.items():
         # which means few holders and a long record.
         ties.append((cid, rec, ln, k, 0))
 
+# A cap walk that already failed on a challenge will fail again unless its
+# record has moved since. Re-walking the same targets every cycle burned 127
+# steps for nothing; record what was walked, and at what record, and only
+# retry when the record has changed.
+walked = {}
+wf = POOL / "walked.txt"
+if wf.exists():
+    for line in open(wf, encoding="utf-8"):
+        if line.strip():
+            cid, rec = line.split()
+            walked[cid] = int(rec)
+for f in POOL.glob("*.out"):
+    for line in open(f, encoding="utf-8", errors="replace"):
+        m = re.match(r"\s+(ac-\d+) record\s+(\d+) \(was \d+\): slack", line)
+        if m:
+            walked[m.group(1)] = int(m.group(2))
+wf.write_text("\n".join(f"{c} {r}" for c, r in sorted(walked.items()))
+              + "\n", encoding="utf-8")
+fresh = [t for t in near if walked.get(t[0]) != rows[t[0]]["ac_best"]]
+stale = len(near) - len(fresh)
+near = fresh
+
 near.sort(key=lambda t: t[4])
 ties.sort(key=lambda t: -t[1])          # longest record first, it flips most
 
@@ -69,7 +91,8 @@ def write(name, rowset):
 
 n1 = write("t_near.txt", near)
 n2 = write("t_ties.txt", ties)
-print(f"{len(mine)} challenges we have a path for")
+print(f"{len(mine)} challenges we have a path for "
+      f"({stale} near misses already walked at the current record, skipped)")
 print(f"  near misses (path too long):   {n1}")
 print(f"  live ties (k<=4, record>=20):  {n2}")
 d = collections.Counter(min(t[4], 9) for t in near)

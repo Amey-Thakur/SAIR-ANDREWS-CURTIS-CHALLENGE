@@ -632,3 +632,114 @@ too weak". The pool is stratified so that solver competence and point value are
 anti-correlated, and no amount of targeting inside a fixed competence boundary escapes
 it. Value distribution in records 19-30 alone: 73 unheld at k=1 worth 0.5 each, 45 at
 k=2 worth 0.25, about 48 points, all of it behind the boundary.
+
+## 2026-09-13, why no constant-factor engineering win is worth building
+
+The competence boundary sits near record 18 and is node-bound, and nodes are
+memory-bound, so the obvious lever is to store states more compactly. Letters are
+{+-1, +-2}, two bits each, stored today in a byte: packing gives 103 bytes per state
+down to 37, a 2.8x gain.
+
+Priced before building, using the measured cost of solving at each record:
+
+| record | states needed |
+|-------:|--------------:|
+|      8 |         2,028 |
+|     14 |       172,372 |
+|     16 |     2,456,933 |
+|     19 |    12,812,195 |
+
+That is about **1.7x more states per extra record**, so a 2.8x budget buys roughly
+**2.2 more records of reach**, from 18 to about 21.
+
+What that opens, counting only unheld challenges with k <= 2, which are the ones worth
+0.25 to 0.50 each:
+
+| band | challenges | value |
+|---|---:|---:|
+| records 19-21 | 2 | **0.8 pts** |
+| records 19-23 | 7 | 2.5 pts |
+| records 19-25 | 19 | 7.8 pts |
+
+**A hot-loop rewrite buys under one point.** The unheld low-k value is concentrated at
+records 26-30, beyond anything a constant-factor memory win can reach, because reach
+grows logarithmically in budget while the value sits exponentially further out. Do not
+build the packed representation, and do not expect any similar constant-factor
+optimisation to matter: the gap is 1,265 points and the mechanism yields fractions.
+
+**Also closed this cycle**: stable-board-only opportunities, 0 of 201. Every path we
+hold that would beat a stable record while missing its ac record has already been
+submitted by the harness, which evaluates both boards independently.
+
+## 2026-09-13, A* reaches the valuable band, and the wall reappears one level out
+
+**The one real advance.** `astar.py`, the learned heuristic driving weighted A*, reaches
+challenges the capped and best-first searches cannot:
+
+| solver | unheld, k <= 2, records 19-60 |
+|---|---|
+| best-first, length + 12*depth | 0 found of 23 |
+| **A\*, learned h, weight 3** | **34 found of 222** |
+
+Every find there is a k=1 or k=2 challenge, worth 0.25 to 0.50 rather than the 0.008
+the reachable short records pay. This partially breaks the anti-correlation recorded
+above, and it came from correcting a judgement: A* had been dismissed for producing
+worse paths than best-first (3/10 exact against 10/10), which was true and irrelevant.
+On this band the binding constraint is reach, not quality, and A* is about twenty times
+cheaper per node, which is exactly what buys reach. The solvers had been compared on
+the wrong axis.
+
+**Two design errors found and fixed.**
+- The cap walk cannot convert an A* find. It re-runs the capped exact search at
+  increasing slack, and those challenges are reachable only because that search cannot
+  reach them at any slack. 62 steps, 0 wins, architecturally impossible.
+- Searches were re-deriving records already in the ledger and reporting them as wins.
+  `--skip-held` and `--max-k` now target unheld low-k challenges only.
+
+**And the wall reappears.** Lowering the A* weight to convert reach into quality fails
+the same way the depth weight did:
+
+| weight | found | scoring |
+|---:|---:|---:|
+| 3 | 34 of 222 | 1 |
+| 1 | 4 of 21 | 1, the same challenge |
+| 0.5 | 0 of 19 | 0 |
+
+Weight 0.5 is nearly admissible and loses reach entirely; weight 3 reaches and
+overshoots. There is no setting that both arrives and arrives short, which is the same
+trade seen at every level of this campaign.
+
+**Standing**: AC rank 10, 17.0870, 156 held. Rank 9 is +19.3, rank 3 is +3,319.
+
+## 2026-09-13, IDA* removes the memory wall, and the band still does not open
+
+**Why it was worth building.** Every other solver stores every state, so the node
+budget is a memory budget: 12M states is about 1.3 GB and buys roughly record 18.
+`runs/pool/idastar.py` searches depth-first under an f = g + h bound and keeps only
+the current path, so memory is O(depth). Budget stopped being capped by RAM.
+
+**It validates and it is fast**: 8 of 8 known optima reproduced and verified, using
+1,766 to 368,825 nodes at 0.0 to 0.5 s, roughly ten times fewer nodes than best-first
+needed for the same challenges. Paths run 0 to 6 moves over optimal, the usual price
+of an inadmissible heuristic at weight 1.
+
+**A bug worth recording.** The first version reported failures after 83,000 to 700,000
+nodes against a 300,000,000 budget. The transposition filter was the cause: when every
+child of a node is filtered, the next bound is never raised, so the iteration concludes
+the space is exhausted and stops. A filter must never be able to suppress the bound
+update. The table is now optional (`--table-bits 0`) and the exact ancestor cycle check
+is sufficient on its own.
+
+**The measurement, with the bug fixed**: unheld k <= 2 at records 19-30, weight 1,
+200,000,000 node budget, **0 found of 17**. Several challenges consumed the entire
+budget, 200M nodes and 206 seconds each, and returned nothing.
+
+**Conclusion.** The memory wall was real and is now gone; the band still does not open,
+because at records 19-30 the space is too large for 200M nodes even with a learned
+heuristic. That is sixteen times what any stored search on this machine could hold.
+The constraint was never only memory, and removing it changed the failure mode without
+changing the outcome.
+
+**Where that leaves the ranking.** A* at weight 3 remains the only solver that reaches
+this band at all, at 15 percent find and about 0.5 percent scoring. Nothing measured
+tonight scales to the 3,319 points that separate us from rank 3.

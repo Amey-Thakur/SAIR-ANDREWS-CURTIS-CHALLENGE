@@ -233,6 +233,8 @@ def main():
     ap.add_argument("--limit", type=int, default=4000)
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--nshards", type=int, default=1)
+    ap.add_argument("--max-k", type=int, default=0)
+    ap.add_argument("--skip-held", action="store_true")
     ap.add_argument("--shorten", action="store_true")
     ap.add_argument("--out", default="runs/pool/astar")
     args = ap.parse_args()
@@ -273,6 +275,12 @@ def main():
     else:
         band = [r for r in rows if r["ac_best"] is not None
                 and args.min_held <= r["ac_best"] <= args.max_held]
+    if args.max_k:
+        band = [r for r in band if r["ac_k"] <= args.max_k]
+    if args.skip_held:
+        held = {json.loads(l)["challenge_id"].replace("sac-", "ac-")
+                for l in open(REPO / "runs/pool/LEDGER.jsonl", encoding="utf-8")}
+        band = [r for r in band if r["ac_id"] not in held]
     band.sort(key=lambda r: (r["ac_best"] or 0,
                              len(r["relators"][0]) + len(r["relators"][1])))
     band = band[:args.limit][args.shard::args.nshards]

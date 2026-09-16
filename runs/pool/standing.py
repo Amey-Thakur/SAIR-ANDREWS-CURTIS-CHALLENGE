@@ -9,6 +9,9 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from src.harness.submit import call  # noqa: E402
 
+# team names can carry characters the console codepage cannot encode
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 US = "ACC01-T00013"
 
 
