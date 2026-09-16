@@ -743,3 +743,42 @@ changing the outcome.
 **Where that leaves the ranking.** A* at weight 3 remains the only solver that reaches
 this band at all, at 15 percent find and about 0.5 percent scoring. Nothing measured
 tonight scales to the 3,319 points that separate us from rank 3.
+
+## 2026-09-16, five architectures, one conclusion
+
+Three days on, the board has moved and we have not: rank 12, 3.1617, 146 held, every
+one shared and none outright. Our score fell from 4.48 with no activity, purely to
+dilution. A new team, AC-Solver =D, entered at rank 4 with 412 points, which is the
+name of the RL solver in arXiv 2408.15332.
+
+**The refreshed pool did open value**: 1,012 unheld challenges at k <= 2 and records
+21-45, worth about 388 points, against +591 to rank 3. For the first time the
+opportunity and the gap are the same order of magnitude.
+
+**Measured against that band, every architecture we have:**
+
+| architecture | result |
+|---|---|
+| capped bidirectional | 0 |
+| best-first with depth weight | 0 of 23 |
+| weighted A* on the learned heuristic | reaches 17-27%, **0 scoring** |
+| IDA*, memory-free, 200M nodes | 0 of 17 |
+| decision-mode IDA*, bound at the record | 0 of 8 |
+
+A* is the only one that reaches at all, and its paths land 5 to 18 moves over. Nothing
+converts them: not shortening, not the cap walk, not a lower weight, not a deeper
+budget.
+
+**Decision mode was the right question and still did not pay.** Starting the bound at
+the record spends the whole budget on the only length that scores instead of
+optimising through lengths that cannot. Seven of eight consumed 150M nodes without
+deciding. The eighth, ac-07351, **exhausted its space at 75.6M nodes**, which proves no
+Andrews-Curtis path of length at most 24 exists for that presentation within word cap
+42. That is a real if small mathematical result and is now section 6b of the Proof
+Track submission.
+
+**Conclusion for the Discovery Track.** The ceiling on this hardware is reached. Five
+architectures, a learned heuristic, every cap and weight policy, bulk precomputation
+and two pipeline designs all fail on the band that pays, and the failure mode is
+consistent: we reach what is worthless and cannot reach what is valuable. Closing that
+needs a trained policy on different hardware.
