@@ -25,7 +25,7 @@ partial result and says so in its first sentence.
 is given. Run `git rev-parse HEAD` for the current value; at the time of writing:
 
 ```
-COMMIT_HASH_PLACEHOLDER
+348d6636d37015438d51a4f763b87da53597361d
 ```
 
 ---
