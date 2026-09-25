@@ -108,9 +108,9 @@ A learned search policy is the relevant class of method. As a first probe, a lea
 
 - **C. F. Miller III and P. E. Schupp**, *Some presentations of the trivial group*, Contemp. Math., 1999 — the Miller–Schupp family, part of the pool that §4 and §5 stratify.
 
-- **A. Shehper, A. M. Medina-Mardones, B. Lewis, L. Pinar, S. Gukov et al.**, *What makes math problems hard for reinforcement learning: a case study*, arXiv:2408.15332 — the yardstick for greedy baseline coverage on Miller–Schupp, and the reference for the learned-policy direction above. Their result that greedy solves a substantial fraction of that family is what made greedy's failure here worth reporting rather than assuming.
+- **A. Shehper, A. M. Medina-Mardones, B. Lewis, L. Pinar, S. Gukov et al.**, *What makes math problems hard for reinforcement learning: a case study*, arXiv:2408.15332 — the yardstick for greedy baseline coverage on Miller–Schupp, and the reference for the learned-policy direction above. Their result that greedy solves much of that family is what made greedy's failure here worth reporting rather than assuming.
 
-- **I. Pohl**, *Bi-directional search* (1971) and *Heuristic search viewed as path finding in a graph* (1970), and **R. E. Korf**, *Depth-first iterative-deepening* (1985) — the bidirectional formulation of §3, the weighted $A^*$ of §5 and the memory-free search of §5b. All used as given; none claimed as new.
+- **I. Pohl**, *Bi-directional search* (1971) and *Heuristic search viewed as path finding in a graph* (1970), and **R. E. Korf**, *Depth-first iterative-deepening* (1985) — the bidirectional formulation of §3, the weighted $A^*$ of §5 and the memory-free search of §5b, all used as given.
 
 **Contribution**: the measurements, and five findings — the length cap not the budget defeats this search (§1); the band structure any single priority setting imposes (§2); the presentation-independence of the backward ball and the bound on what precomputing it buys (§3); the anti-correlation of competence and value under the tie rule (§5); and the non-existence statement for `ac-07351` (§5b). The §6 negatives and the closing probe are also original, reported because they bound the approach.
 
