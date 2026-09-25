@@ -21,12 +21,16 @@ Submissions opened 11 September 2026; the deadline is **30 November 2026 AoE**.
 The direction states what the work aims at, not what it has achieved. This is a
 partial result and says so in its first sentence.
 
-**Git commit hash** — the form requires the full hash whenever a repository link
-is given. Run `git rev-parse HEAD` for the current value; at the time of writing:
+**Git commit hash** — the form requires the full hash whenever a repository
+link is given. A hash cannot be embedded in the commit it names, so take it
+from the repository rather than from this file:
 
+```bash
+git rev-parse HEAD
 ```
-348d6636d37015438d51a4f763b87da53597361d
-```
+
+Use the hash of the pushed commit you are submitting, and update it if you
+revise and resubmit.
 
 ---
 
