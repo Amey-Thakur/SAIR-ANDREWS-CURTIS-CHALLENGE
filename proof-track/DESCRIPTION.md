@@ -2,7 +2,7 @@
 
 **This is a partial result. It makes no claim about the Andrews–Curtis conjecture in either direction.** It reports reproducible measurements over the $10{,}115$ presentations of the Discovery pool that fix how an AC search should be structured, a structural obstruction limiting what any search of this family can score, and one verified non-existence statement at a bounded length.
 
-Write $P = \langle x, y \mid r_1, r_2 \rangle$, with $\ell(P) = |r_1| + |r_2|$ and $d(P)$ the moves applied. Every path below was replayed by the official reference verifier, and the engine's move numbering checked equal to official `core.apply_move` on $38{,}682$ pairs.
+Write $P = \langle x, y \mid r_1, r_2 \rangle$, with $\ell(P) = |r_1| + |r_2|$ and $d(P)$ the moves applied. Every path below was replayed by the official reference verifier, and the move numbering checked equal to official `core.apply_move` on $38{,}682$ pairs.
 
 ## 1. A hard bound on total length is the dominant design error
 
@@ -26,7 +26,7 @@ Replacing the cap with an ordering — priority $f(P) = \ell(P) + w \cdot d(P)$,
 
 At $w{=}12$ all ten are solved **at exactly the known optimum**, in $0.4$–$2.6$ s using $2{,}028$–$2{,}456{,}933$ states; the capped search needed millions of states and $5$–$25$ s to do worse. The depth charge buys exactness and is paid for in states: $w{=}1$ finds a path in $177$–$858$ states but never the optimum, $w{=}4$ takes $1{,}118$–$80{,}046$ and reaches eight of ten. With no charge, paths are far from minimal — $32$ against optimum $15$, $129$ against $14$.
 
-Widening the cap is no substitute for removing it: at record $91$, slack $2$ returned $95$ and slack $4$ returned **nothing**. A wider hard box grows faster than any budget covers.
+Widening the cap is no substitute for removing it: at record $91$, slack $2$ returned $95$ and slack $4$ **nothing**. A wider box grows faster than any budget covers.
 
 ## 2. The two terms trade off sharply
 
@@ -78,7 +78,7 @@ The first line is a genuine, if small, negative result: **within word cap 42 the
 
 Every method measured is competent exactly where the optimum is short; the long-record presentations are those where no method reached any path at all. That region holds, by §6, essentially all the point value. Five architectures were measured there — capped bidirectional, best-first with depth weight, weighted $A^*$ on a learned heuristic, IDA\* and decision-mode IDA\* — and all score zero, so more budget will not close it.
 
-A learned search policy is the relevant class of method. As a first probe, a least-squares estimator of distance to $(x,y)$ fitted on record-length paths reached mean absolute error $3.0$ moves against $5.6$ for $\ell(P)$ alone, and cut node counts roughly twentyfold as an $A^*$ heuristic — but **did not improve path quality** over the tuned priority of §1. The useful policy is evidently not a linear function of simple word statistics.
+A learned search policy is the relevant class of method. As a first probe, a least-squares estimator of distance to $(x,y)$ fitted on record-length paths reached mean absolute error $3.0$ moves against $5.6$ for $\ell(P)$ alone, and cut node counts roughly twentyfold as an $A^*$ heuristic — but **did not improve path quality** over the tuned priority of §1. The useful policy is evidently not linear in simple word statistics.
 
 ## Prior work used, and what is used from it
 
@@ -88,4 +88,4 @@ A learned search policy is the relevant class of method. As a first probe, a lea
 - **A. Shehper, A. M. Medina-Mardones, B. Lewis, L. Pinar, S. Gukov et al.**, *What makes math problems hard for reinforcement learning: a case study*, arXiv:2408.15332 — the yardstick for greedy baseline coverage on Miller–Schupp, and the reference for the learned-policy direction above. Their result that greedy solves a substantial fraction of that family is what made greedy's failure here worth reporting rather than assuming.
 - **I. Pohl**, *Bi-directional search* (1971) and *Heuristic search viewed as path finding in a graph* (1970), and **R. E. Korf**, *Depth-first iterative-deepening* (1985) — the bidirectional formulation of §4, the weighted $A^*$ of §6 and the memory-free search of §6b. All used as given; none claimed as new.
 
-**Contribution**: the measurements, and five findings — the length cap rather than the budget defeats this search (§1); the band structure any single priority setting imposes (§2); the presentation-independence of the backward ball and the bound on what precomputing it buys (§4); the anti-correlation of competence and value under the tie rule (§6); and the non-existence statement for `ac-07351` (§6b). The §7 negatives and the closing probe are also original, reported because they bound the approach.
+**Contribution**: the measurements, and five findings — the length cap not the budget defeats this search (§1); the band structure any single priority setting imposes (§2); the presentation-independence of the backward ball and the bound on what precomputing it buys (§4); the anti-correlation of competence and value under the tie rule (§6); and the non-existence statement for `ac-07351` (§6b). The §7 negatives and the closing probe are also original, reported because they bound the approach.
