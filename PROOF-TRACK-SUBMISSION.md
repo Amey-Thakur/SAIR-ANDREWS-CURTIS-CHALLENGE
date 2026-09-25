@@ -1,56 +1,82 @@
 # Proof Track submission
 
-competition.sair.foundation → Create Submission → **Choose Proof Track**.
-Discovery Track is submitted automatically through the API; do not paste there.
+competition.sair.foundation → Andrews–Curtis → **Proof Track** → Submit. There
+is **no Proof Track API**: the competition exposes only `acc` with submission
+kind `acc-solutions`, which is the Discovery Track, so this one is submitted
+through the web form. Discovery is submitted through the API and nothing here
+belongs there.
 
-| Field | Value |
+Submissions opened 11 September 2026; the deadline is **30 November 2026 AoE**.
+
+| Form field | What to enter |
 |---|---|
-| Title | see below |
-| Authors | `Amey Thakur` |
-| Claim type | **AC**, direction **proof** |
-| Result completeness | **Partial result** |
-| Repository link | `https://github.com/Amey-Thakur/SAIR-ANDREWS-CURTIS-CHALLENGE` |
-| Commit SHA | see below |
-| arXiv / Paper link | leave empty |
-| References | skip; prior work is cited in the Description |
-| Sharing agreement | tick it, then Publish Proof |
+| Conjecture | **AC** |
+| Direction | **proof** |
+| Description | the block under *Description* below, in full |
+| Public GitHub repository link | `https://github.com/Amey-Thakur/SAIR-ANDREWS-CURTIS-CHALLENGE` |
+| Git commit hash | the full hash below |
+| arXiv or paper link | leave empty until Paper III is announced |
+| Sharing agreement | required; tick it |
 
-**Title**
+The direction states what the work aims at, not what it has achieved. This is a
+partial result and says so in its first sentence.
 
-```
-Length as priority, not constraint: search geometry of the Andrews-Curtis Challenge pool
-```
-
-**Commit SHA** — run `git rev-parse HEAD` in the repository for the current value.
-At the time of writing:
+**Git commit hash** — the form requires the full hash whenever a repository link
+is given. Run `git rev-parse HEAD` for the current value; at the time of writing:
 
 ```
-829725698d2b1de3358b5751f24dc9b2e8358260
+COMMIT_HASH_PLACEHOLDER
 ```
 
 ---
 
 ## Description
 
-Everything below the line goes in the Description field. Markdown and math are
-supported there.
+Everything between the two rules goes in the Description field, starting at the
+title line. Markdown and math are supported there.
 
 ---
 
+# Length as priority, not constraint: search geometry of the Andrews–Curtis Challenge pool
+
+**Amey Thakur** · [ORCID 0000-0001-5644-1575](https://orcid.org/0000-0001-5644-1575)
+
 ## Summary
 
-A **partial result**: no claim is made about the conjecture itself. This reports
+**This is a partial result. It makes no claim about the Andrews–Curtis
+conjecture itself, in either direction.** What it reports is a set of
 reproducible measurements over the $10{,}115$ balanced presentations of the
-Discovery pool that determine how an Andrews–Curtis search should be structured,
-and identifies a structural obstruction that limits what any search of this
-family can score.
+Discovery pool which fix how a search for an AC reduction should be structured,
+together with a structural obstruction that limits what any search of this
+family can score, and one verified non-existence statement at a bounded length.
 
 Write a presentation as $P = \langle x, y \mid r_1, r_2 \rangle$, with total
 length $\ell(P) = |r_1| + |r_2|$ and $d(P)$ the number of moves applied. Every
-path reported here was checked with the official reference verifier.
+path reported here was replayed by the official reference verifier before it was
+counted, and every path submitted to the Discovery Track was replayed again by
+the platform.
 
-Code: `runs/pool/` (solvers) and `src/` (engine and verifier) in the linked
-repository.
+**What is established.** A hard bound on total relator length is the dominant
+design error in this search (§1); the two terms of a length-plus-depth priority
+trade off against each other in a way that makes any one setting competent on a
+band rather than on the pool (§2); the backward half of a bidirectional search
+does not read the presentation, which both permits amortisation and bounds what
+precomputation can buy (§4); solver competence and point value are
+anti-correlated by construction under a $2^{1-k}$ tie rule (§6); and for one
+presentation no AC path of length at most $24$ exists within word cap $42$
+(§6b).
+
+**What remains open.** Every method measured here is competent exactly where the
+optimum is short, and the presentations with long records are precisely those
+where no method reached any path at all. That region holds essentially all of the
+point value, and closing it is not a matter of more budget for these
+architectures — five of them were measured and all score zero there (§6b, §7).
+The relevant class of method is a learned search policy, and the probe reported
+at the end of this description was not sufficient.
+
+Code in the linked repository: `runs/pool/` (solvers), `src/` (engine and
+verifier), and `runs/campaign_log.md` (the measurement log these figures are
+drawn from).
 
 ---
 
@@ -66,16 +92,31 @@ Replacing the cap with an ordering — priority $f(P) = \ell(P) + w \cdot d(P)$,
 with no admission test — changes the outcome entirely. On ten presentations of
 known optimum, at fixed node budget:
 
-| priority | lengths found, against optima $15, 15, 14, 10, 14, 11, 13, 8$ |
-|---|---|
-| capped exact search | often no path inside the cap |
-| $w = 0$ | $32, 140, 129, 13, 75, 21, 49, 10$ |
-| $w = 4$ | $15, 15, 14, 10, 14, 11, 13, 8$ |
-| $w = 12$ | $15, 15, 14, 10, 14, 11, 13, 8$ |
+| challenge | optimum | $w = 1$ | $w = 4$ | $w = 12$ |
+|---|---:|---:|---:|---:|
+| `ac-00236` | $15$ | $16$ | $15$ | $15$ |
+| `ac-00343` | $15$ | $17$ | $15$ | $15$ |
+| `ac-00488` | $14$ | $15$ | $14$ | $14$ |
+| `ac-00742` | $10$ | $11$ | $10$ | $10$ |
+| `ac-00807` | $14$ | $17$ | $14$ | $14$ |
+| `ac-00894` | $14$ | $17$ | $15$ | $14$ |
+| `ac-01143` | $16$ | $17$ | $17$ | $16$ |
+| `ac-01411` | $11$ | $16$ | $11$ | $11$ |
+| `ac-01586` | $13$ | $15$ | $13$ | $13$ |
+| `ac-01635` | $8$ | $10$ | $8$ | $8$ |
+| **exact** | | $0/10$ | $8/10$ | $\mathbf{10/10}$ |
 
-At $w = 12$ all ten are solved **at exactly the known optimum**, in $0.3$–$2.6$ s
-using $2 \times 10^3$ to $2.5 \times 10^6$ states. The capped search needed
-millions of states and $5$–$25$ s per presentation to do worse.
+Every path was replayed by the reference verifier. At $w = 12$ all ten are
+solved **at exactly the known optimum**, in $0.4$–$2.6$ s using $2{,}028$ to
+$2{,}456{,}933$ states. The capped search needed millions of states and $5$–$25$ s
+per presentation to do worse.
+
+The depth charge is what buys exactness, and it is paid for in states: $w = 1$
+finds a path in $177$–$858$ states but never the optimum, $w = 4$ takes
+$1{,}118$–$80{,}046$ and reaches eight of ten, and $w = 12$ reaches all ten.
+Removing the charge entirely leaves length alone to order the queue, which finds
+paths very cheaply and far from minimal — $32$ against an optimum of $15$, $129$
+against $14$.
 
 Widening the cap is not a substitute for removing it: on a presentation with
 record $91$, slack $s = 2$ returned $95$ and $s = 4$ returned **nothing**. A
@@ -177,11 +218,11 @@ length exist?**
 Starting the iterative-deepening bound *at the record* asks exactly that, and
 the upper bound needed to make it well posed comes free from the weighted A* of
 the previous section. Measured on unheld $k \leq 2$ challenges at records 21 to
-30, memory $O(	ext{depth})$, budget $1.5 	imes 10^8$ states:
+30, memory $O(\text{depth})$, budget $1.5 \times 10^8$ states:
 
 | challenge | record | outcome |
 |---|---:|---|
-| ac-07351 | 24 | space **exhausted** at $7.6 	imes 10^7$ states |
+| ac-07351 | 24 | space **exhausted** at $7.6 \times 10^7$ states |
 | ac-06403 | 22 | budget consumed, undecided |
 | ac-02353 | 24 | budget consumed, undecided |
 
@@ -222,12 +263,46 @@ alone, and reduced node counts roughly twentyfold as an $A^*$ heuristic — but
 **did not improve path quality** over the tuned priority of §1. This suggests the
 useful policy is not a linear function of simple word statistics.
 
-## Prior work used
+## Prior work used, and what is used from it
 
-- Official SAIR Andrews–Curtis repository,
-  https://github.com/SAIRcompetition/Andrews-Curtis — move specification and
-  reference verifier, against which every path reported here was checked.
-- A. Shehper, A. M. Medina-Mardones, B. Lewis, L. Pinar, S. Gukov et al.,
-  *What makes math problems hard for reinforcement learning: a case study*,
-  arXiv:2408.15332 — used as a yardstick for greedy baseline coverage and as the
-  reference for the learned-policy approach named above.
+- **Official SAIR Andrews–Curtis repository**,
+  <https://github.com/SAIRcompetition/Andrews-Curtis>. The move specification,
+  the challenge data and the reference verifier. Every path reported above was
+  replayed by that verifier, and the engine's internal move numbering was checked
+  equal to the repository's `core.apply_move` on $38{,}682$ pairs before any
+  result here was trusted. The $2^{1-k}$ tie rule of §6 is the competition's own
+  scoring rule, taken from its published documentation.
+- **J. J. Andrews and M. L. Curtis**, *Free groups and handlebodies*,
+  Proceedings of the American Mathematical Society, 1965. The conjecture and the
+  move set this work searches over.
+- **C. F. Miller III and P. E. Schupp**, *Some presentations of the trivial
+  group*, Contemporary Mathematics, 1999. The source of the Miller–Schupp family,
+  which makes up part of the Discovery pool alongside the competition's own draw;
+  §5 and §6 stratify holdings across both.
+- **A. Shehper, A. M. Medina-Mardones, B. Lewis, L. Pinar, S. Gukov and
+  co-authors**, *What makes math problems hard for reinforcement learning: a case
+  study*, [arXiv:2408.15332](https://arxiv.org/abs/2408.15332). Used two ways:
+  as the yardstick for greedy baseline coverage on the Miller–Schupp
+  presentations, and as the reference for the learned-policy direction named
+  under *What remains open*. Their result that a greedy baseline solves a
+  substantial fraction of that family is what made the failure of greedy search
+  on this pool worth reporting rather than assuming.
+- **I. Pohl**, *Bi-directional search*, Machine Intelligence, 1971, and
+  *Heuristic search viewed as path finding in a graph*, Artificial Intelligence,
+  1970. The bidirectional formulation of §4 and the weighted-$A^*$ formulation of
+  §6 are both standard and are used as given; nothing about either is claimed as
+  new here.
+- **R. E. Korf**, *Depth-first iterative-deepening: an optimal admissible tree
+  search*, Artificial Intelligence, 1985. The memory-free iterative-deepening
+  search used in §6b, again used as given.
+
+**What this submission contributes**, as distinct from the above: the
+measurements themselves, and five specific findings drawn from them — that the
+length cap rather than the budget is what defeats this search (§1), the band
+structure that any single priority setting imposes (§2), the
+presentation-independence of the backward ball together with the bound on what
+precomputing it can buy (§4), the anti-correlation of competence and point value
+under the tie rule (§6), and the single verified non-existence statement for
+`ac-07351` (§6b). The negative results in §7 and the closing probe are also
+original to this work, and are reported because they bound what the approach can
+do rather than because they succeeded.
