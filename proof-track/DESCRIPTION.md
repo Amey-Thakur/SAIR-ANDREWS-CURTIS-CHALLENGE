@@ -54,7 +54,7 @@ A tie pays $2^{1-k}$, so matching a record held by one team pays $0.5$ and one s
 
 In records 19–30 alone there are $73$ unheld challenges at $k{=}1$ and $45$ at $k{=}2$, about $48$ points, all beyond the competence boundary. Consistently: nothing on $21$ attempts at records $27$–$40$, nothing on $35$ at $121$–$300$, nothing on $17$ above $301$.
 
-This is stronger than "the search is too weak". Competence and value are anti-correlated *by construction*, so no target selection within a fixed competence boundary escapes it; only moving the boundary does. Improving a heavily shared record was also futile in every case checked: for a record-$8$ presentation shared ten ways the search returns $8$ at every slack $s \in [1,8]$, witnessing optimality, and **zero of $61$** such attempts improved anything.
+This is stronger than "the search is too weak". Competence and value are anti-correlated *by construction*, so no target selection within a fixed boundary escapes it; only moving the boundary does. Improving a heavily shared record was also futile in every case checked: for a record-$8$ presentation shared ten ways the search returns $8$ at every slack $s \in [1,8]$, witnessing optimality, and **zero of $61$** such attempts improved anything.
 
 ## 6b. The decision question instead of the optimisation question
 
