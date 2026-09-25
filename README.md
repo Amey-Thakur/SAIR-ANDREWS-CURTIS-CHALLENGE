@@ -107,22 +107,71 @@ relator.
 
 <br>
 
+## The two tracks
+
+The competition runs two tracks that ask different questions, and each has its
+own folder here. Start with whichever one you came for.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🔍 [Discovery Track](discovery-track/README.md)
+
+**Find shorter paths.** Submit move sequences that trivialise a presentation;
+the platform replays each one and the shortest verified length scores.
+
+146 verified lines, 144 challenges held on `ac` and 128 on `stable_ac`.
+Submitted through the **API**.
+
+[How it is run →](discovery-track/README.md)
+
+</td>
+<td width="50%" valign="top">
+
+### 📐 [Proof Track](proof-track/README.md)
+
+**Say something true about the conjecture.** Ideas, partial results, proofs or
+disproofs. Nothing has to be fully resolved to contribute.
+
+A partial result on search geometry, with one verified non-existence statement.
+Submitted through the **web form**; there is no Proof Track API.
+
+[The submission →](proof-track/DESCRIPTION.md)
+
+</td>
+</tr>
+</table>
+
+<br>
+
 ## What this repository does
 
-The Discovery Track opened on 11 September 2026. The organisers publish the
-challenge data, the numbered move specifications and a reference verifier in
-the [official challenge repository](https://github.com/SAIRcompetition/Andrews-Curtis),
-and the submission contract in the [API documentation](https://docs.sair.foundation/docs/endpoints/competitions/acc/).
-This repository holds the independent parts: the moves, the verifier, a
-measured baseline, and the reading order.
+The organisers publish the challenge data, the numbered move specifications and a
+reference verifier in the
+[official challenge repository](https://github.com/SAIRcompetition/Andrews-Curtis),
+and the submission contract in the
+[API documentation](https://docs.sair.foundation/docs/endpoints/competitions/acc/).
+This repository holds the independent parts: the moves, the verifier, the
+solvers, the measurements, and both submissions.
 
 | Path | What it holds |
 | :--- | :--- |
+| **[discovery-track/](discovery-track/README.md)** | The Discovery Track: how a pass is run, what it reached, and why the score behaved as it did |
+| **[proof-track/](proof-track/README.md)** | The Proof Track: the submission, and the form fields to enter it with |
 | **[docs/](docs/README.md)** | The reading order: the conjecture, the two tracks, what is measured and what is not |
 | **[src/ac/](src/ac/)** | Words, balanced presentations, the five moves, and the verifier |
 | **[src/search/](src/search/)** | A baseline search, and what it does and does not reach |
-| **[src/harness/](src/harness/)** | Check a solution before submitting it |
+| **[src/harness/](src/harness/)** | Check a solution before submitting it, and send it |
+| **[runs/](runs/campaign_log.md)** | The solvers, one file per architecture tried, and the dated measurement log |
 | [tests/](tests/) | What is actually verified, run with `python -m pytest` |
+
+> [!NOTE]
+> `src/` and `runs/` stay at the repository root rather than moving under
+> `discovery-track/`. `src/` is an importable package (`python -m
+> src.harness.submit`) and the solvers in `runs/pool/` resolve paths relative to
+> themselves, so moving either would break both. The two track folders hold what
+> is specific to each track; the machinery both share stays where it is.
 
 <br>
 
