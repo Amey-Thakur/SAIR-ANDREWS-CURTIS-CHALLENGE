@@ -782,3 +782,890 @@ architectures, a learned heuristic, every cap and weight policy, bulk precomputa
 and two pipeline designs all fail on the band that pays, and the failure mode is
 consistent: we reach what is worthless and cannot reach what is valuable. Closing that
 needs a trained policy on different hardware.
+
+## 2026-09-26, the walk lands on records instead of under them
+
+Nine days without a run. The pool was 9 days stale, so the first act was
+`refresh_pool.py`: 10,115 challenges, snapshot 01:30Z, and it changed the shape of
+every target list.
+
+**Standing.** Before: ac rank 22, 0.0357, 144 held; stable_ac rank 22, 0.0449, 128
+held. After: **ac rank 22, 0.0388, 148 held; stable_ac rank 22, 0.0464, 131 held.**
+Submissions 2319, 2320 and 2321, 7 lines, every line `ok` from the official
+verifier. Rank unchanged on both boards. Leaders AC-Solver =D 2086.92 and
+冰冻野鸡大学 2024.72; rank 3 (Catsitter) is 519.39, so +519.4 to pass.
+
+**Every one of our 148 holds is a joint hold, k between 8 and 41, and none is
+outright.** All 148 together are worth 0.0388 points. One outright beat is worth
+1.0. That ratio, not compute, is the campaign.
+
+### Leads had to be attributed to a solver before spending anything
+
+`build_targets.py` scrapes "found but too long" lines out of every `*.out`, which
+mixes solvers that the cap walk can convert with solvers it cannot. Attributed by
+each log's own header:
+
+| origin of the lead | leads | convertible by the walk |
+|---|---:|---|
+| exact capped bidirectional | 78 | yes |
+| ball search | 52 | yes, same cap |
+| the cap walk's own earlier output | 2 | yes |
+| best-first / IDA* | 4 | no |
+| A* on the learned heuristic | 105 | **no**, architecturally |
+
+The A* leads are the largest group and they are worthless to the walk: those
+challenges are reachable only because the exact search cannot reach them at any
+slack, which the log already measured at 62 steps and 0 wins. That left **124
+convertible leads**, written to `runs/pool/t_exact.txt`, of which **39 are within 5
+moves of the record** and the rest need 6 or more moves saved, which the walk has
+never done.
+
+### Slacks 4 to 8 of the walk were measuring nothing
+
+The first pass ran `nearmiss.py` at 5,000,000 nodes/side over slacks 1 to 8. Its
+failures carry the signature the log identified in the cold sweep: **identical node
+counts across different challenges.**
+
+    ac-06321 slack 4 -> none (7,226,201 nodes)   ac-00637 slack 4 -> none (7,226,201 nodes)
+    ac-06321 slack 5 -> none (7,306,923 nodes)   ac-00637 slack 5 -> none (7,306,923 nodes)
+    ac-06321 slack 6 -> none (7,452,439 nodes)   ac-00637 slack 6 -> none (7,452,439 nodes)
+
+Across the two shards, 3 different challenges returned 7,795,847 at slack 8 and 3
+more returned 7,775,585 at slack 7. A count that depends only on presentation size
+and slack is the presentation-independent backward ball: at slack 4 and above the
+whole budget goes on rebuilding it and the forward half never moves. **The proof
+that these are budget failures and not absences is that the boxes nest** —
+ac-06321 returns 36 at slack 3 and "none" at slack 4, and the slack-3 box is a
+subset of the slack-4 box.
+
+So slacks 5 to 8 cost about 140 s per challenge and carry no information. Both
+shards were stopped and the budget reallocated: **slacks 1 to 4 at 12,000,000
+nodes/side**, which does complete (ac-09409 finished slack 2 on 18.3M nodes). Two
+new arguments were added rather than editing constants: `nearmiss.py` takes the top
+slack as `argv[5]`, and `jit_engine.MAXLEN` reads `ACC_MAXLEN`.
+
+### The walk now arrives exactly on the record and not under it
+
+39 closest leads, slacks 1-4, 12M nodes/side:
+
+| challenge | our old path | walk result | record | outcome |
+|---|---:|---:|---:|---|
+| ac-03611 | 36 | 34 | 34 | tie, k 9 |
+| ac-05751 | 34 | 31 | 31 | tie, k 10 |
+| ac-08702 | 27 | 26 | 26 | tie, k 13 |
+| ac-05653 | 31 | 29 | 28 | no score |
+| ac-05726 | 40 | 38 | 35 | no score |
+
+**3 ties, 2 improvements, 0 beats from 39 pre-qualified leads.** In April the same
+method took outright steals off these lists (35 -> 27 against 33). It no longer
+does, and the reason is visible in the failures: ac-01443 returns 26 at slack 3 and
+26 at slack 4 against a record of 24; ac-07186 returns 26 at slack 2 and 3 against
+a record of 23. Our search returns the true minimum inside its cap, so those
+records are held by paths that **leave the box at cap = size + 4**. Earlier in the
+campaign records in this band were heuristic and beatable; the field has since
+converged onto paths our cap cannot express.
+
+`walk` stopping at `len(best) < rec` never fires now, so the walk exhausts its
+slacks and reports the record itself. That is why today's yield is ties.
+
+### Cold sweeps, re-measured on the refreshed bands
+
+All with the exact search, the band's correct slack, `--walk --shorten`, and
+`skip_all.txt` (settled plus held):
+
+| band | slack | attempted | found | scoring |
+|---|---:|---:|---:|---:|
+| records 23-30, open remnant | 2 | 94 | 2 | 1 tie (k 15) |
+| records 31-45, open | 0 | 157 | 4 | **0** |
+| records 46-60, open | 0 | 145 | 2 | **0** |
+
+Records 23-30 scored 30 percent on 12 Sep; it scores 1 percent now, on the part of
+the band that is left. **Records 46-60 had never been swept** (5 of 1,942 settled,
+because every earlier sweep sorted ascending and its `--limit` ran out inside
+31-45); 1,937 challenges were open there and 721 are single-holder, so it was the
+largest untried volume in the pool. It measures the same as 31-45: the find rate
+survives, the scoring rate is zero, because our path lands over the record.
+
+### The long-record tail: a new seam, opened and closed
+
+The one target class no solver in this campaign had ever touched. Records above
+1,000 are almost certainly heuristic wanderings, not minima, and best-first at
+depth-weight 0 is a wandering solver too: on records of 301 it has produced 799 and
+963 after one shortening pass. Against a record of 2,116 a 900-move path is an
+outright point. The earlier `bf301` run had stopped after 5 challenges at records
+301-302, so nothing above 302 had been attempted; ac-01669 (record 2,116) and the
+nine other records above 2,000 had never been given to any solver.
+
+| probe | challenges | nodes/side | found |
+|---|---:|---:|---:|
+| records 501-2,116, dw 0, shorten | 109 | 4,000,000 | **0** |
+| records 1,000-2,116, dw 0, shorten | 23 | 16,000,000 | **0** |
+
+**Every one of the 132 failures exhausted its full budget**, including 32,000,000
+nodes on each of the ten records above 2,000. The failure is budget-limited rather
+than structural, and quadrupling the budget changed nothing, so the seam is closed
+at this hardware. Iterated shortening cannot help either: `itcut` shows pass 1 doing
+all the work (1,912 -> 415) and pass 3 gaining nothing.
+
+### Our own joint holds cannot be walked into beats
+
+148 holds are all at the record, which makes them the most pre-qualified list that
+exists: a path is known, its length is known, and one move less pays 1.0. The 25
+holds at record >= 20 not already walked at the current record were walked at slacks
+1-6 with 12M nodes/side. **11 challenges, 66 walk steps, 0 finds** — the exact
+search cannot even re-derive our own record-length path (ac-05077 exhausted
+20,224,667 nodes at slack 1 looking for a 30-move path we hold). Those paths were
+found under different caps and budgets and are not recoverable inside this box.
+
+### Two hypotheses killed cheaply
+
+**The rank-3 stable search is dead.** The standing argument for building it was
+that `sac_best - ac_best` ran as low as -104, proving stabilisation could shorten a
+path dramatically. On the refreshed snapshot that is no longer true:
+
+| sac_best - ac_best | challenges |
+|---|---:|
+| +2 | 6,707 |
+| +1 | 615 |
+| 0 | 75 |
+| > +2 | 35 |
+| negative | 11, never by more than 2 |
+
+The field's stable records are now just the ac record plus two destabilises, which
+is exactly what our harness already emits. There is no 104-move win to chase and
+the build is not worth starting. The -104 figure in memory is stale.
+
+**MAXLEN 44 was not the binding constraint.** It caps slack at 42 - size, which
+allows only slack 2 at size 40, so it looked like the reason the walk stopped at 8.
+Measured: **0 of the 124 convertible leads is truncated at slack 8** — they all sit
+on presentations of size 34 or less. `ACC_MAXLEN` is kept for walks past slack 8;
+it buys nothing on the current list.
+
+### Where the value is, and why we cannot reach it
+
+Single-holder challenges, where a match pays 0.5 and a beat 1.0:
+
+| record band | single-holder | our reach |
+|---|---:|---|
+| <= 30 | **2** | exact search reaches all of it |
+| 31-60 | 891 | reaches, lands over the record |
+| 61-300 | 2,615 | does not reach |
+| 301+ | 316 | does not reach |
+
+Of 3,824 single-holder challenges, 2 are at records our search settles. The
+anti-correlation the log recorded in September has hardened: records <= 30 are now
+shared 8 to 41 ways because everyone finds the optimum there, and 2^(1-k) makes
+that band pay nothing. `skip_exact.txt` grew from 780 to 1,245 settled ids today.
+
+### What is and is not reachable on this hardware
+
+Reachable, and done: every challenge whose true minimum fits inside cap = size + 4
+and whose record we can match. That is 148 holds worth 0.0388 points, and today's
+work added 0.0031 of it.
+
+Not reachable: anything paying 0.25 or more. Rank 3 needs +519.4, which is about
+520 outright beats. Our best rate all campaign was 3 per hour and today's rate was
+0 per six hours across 570 challenges in six target classes. The binding constraint is
+that a path of 31 to 60 moves must be expressible inside a cap of size + 0 to + 4
+to be found exactly, and the teams above us have solvers that produce such paths
+without that restriction. **Top 3 is not reachable on this machine by any parameter
+setting, and the honest ceiling of the present method is a score under 0.1.**
+
+**One more knob, closed.** Raising the beam's length cap from 44 to 68
+(`ACC_MAXLEN=72 --cap 68`), which the exact search can never do, changed nothing
+on the five closest record-31 targets at beam 16,384: 31, 32, 32, 35, 34 against
+31, 32, 32, 34, 34 at cap 44. A wider cap only fills the beam with long states,
+because the ranking is length itself. The cap is not the constraint; the ranking
+is.
+
+### What the next run should do
+
+The three cold sweeps were stopped at the end of the run rather than left to hold
+5.4 GB overnight on a machine with no free physical memory: 368 challenges between
+them, 7 finds, 0 scoring, so their expected yield did not justify the load. Their
+ids are folded into `skip_exact.txt`, which is why it grew to 1,245, and their
+"found but too long" lines are lead candidates for the next `t_exact.txt`. No
+python processes are left running and commit charge is back to 23.2 GB.
+
+Next run: refresh, rebuild `t_exact.txt` through the attribution filter (exact and
+ball origin only, distance <= 5), and walk at slacks 1-4 with 12M nodes/side. Do
+not spend anything on slacks 5-8 at a 5M budget, on A*-origin leads, on the long
+record tail, on our own joint holds, or on a rank-3 stable search. All five are
+measured negatives as of today.
+
+## 2026-09-26 15:00Z, the trained policy, measured, and a beam that reaches the record
+
+The pool was 16 hours stale, so `refresh_pool.py` first: 10,115 challenges,
+snapshot 13:30Z. The refresh opened exactly **10** challenges we neither hold nor
+have settled at a record the exact search can reach, all in the 18-22 band.
+Records 23-30 now have 205 open challenges and **0 unsettled**; the band is
+finished.
+
+**Standing.** Before, 13:35Z: ac rank 22, 0.0310, 148 held; stable_ac rank 22,
+0.0361, 131 held. After, 14:50Z: **ac rank 22, 0.0303, 149 held; stable_ac rank
+22, 0.0351, 131 held.** Submission 2406, 1 line, `ok` from the official
+verifier. The score FELL while a hold was added, purely to dilution: leaders
+AC-Solver =D 1975.89 on ac and the rank-1 stable team 2059.85, rank 3 (Catsitter) 585.14, so
++585.1 to pass.
+
+### The harvest: 10 challenges, 3 leads, 0 points
+
+Exact bidirectional search, records 18-22, slack 4, `--shorten`.
+
+| challenge | record | k | ours |
+|---|---:|---:|---:|
+| ac-00338 | 20 | 13 | 26 |
+| ac-01059 | 22 | 11 | 23 |
+| ac-03926 | 22 |  8 | 23 |
+
+The other seven returned none with the familiar signature: 6,831,269 nodes on
+two different challenges, 6,838,907 and 6,835,153 and 6,818,033 on three more.
+Presentation-independent backward ball, budget failure, not absence.
+
+The walk on the two one-move leads measured nothing again. ac-01059 returns
+none at slack 1 and then **23 at slack 2, 23 at slack 3 and 23 at slack 4**
+against a record of 22, and slack 5 was still running after ten minutes when it
+was killed. The record is held by a path that leaves cap = size + 4.
+
+**An operational correction worth keeping.** The first harvest attempt ran at
+10,000,000 nodes/side with `--table-bits 23` and took 50 minutes to clear two
+challenges. `solve_bidir` allocates its arrays INSIDE the njit function, so
+every challenge zeroes about 2.1 GB, and with ~2 GB of physical memory free that
+is page faults, not search. At 4,000,000 nodes/side and `--table-bits 22` the
+same ten finished in about two minutes. **On this machine the exact search is
+memory-bound before it is compute-bound; size the budget to free physical
+memory, not to the commit limit.**
+
+### The trained policy of arXiv 2408.15332, built and measured
+
+The paper itself is the first piece of evidence and it was not read closely
+enough before. Its PPO is an actor-critic with two hidden layers of 512 units,
+trained for 100 million environment interactions. Its results on the 1,190
+Miller-Schupp presentations: greedy search **533**, breadth-first **278**, PPO
+**431** at horizon 200 and **402** at horizon 400, and the paper states the
+constant-horizon PPO solutions "formed a subset of the presentations solved by
+the greedy search". Only with a variable horizon schedule did it solve **2**
+presentations greedy could not. So the method whose name sits at rank 1 on this
+board was, in its own paper, weaker than greedy search on 1,188 of 1,190 cases.
+Our greedy solves 452 of the same 1,190 (`runs/bench/ms1190/summary.json`).
+
+That does not settle whether a network helps HERE, so one was built. Three new
+scripts, all local: `runs/pool/policy_data.py`, `policy_net.py`,
+`policy_solve.py`, plus `policy_eval424.py` and `policy_export.py`.
+
+**Supervision is free and does not need PPO.** Scramble backwards from (x, y)
+and the correct action is known by construction. `policy_data.py` produced
+**3,000,000 labelled states from 200,000 walks in 2.2 s (1.37M rows/s)** under a
+cap of 44 on total relator length, mean total length 26.8 against the pool's
+median of 29.
+
+**The network trains here comfortably.** 516,623 parameters, one shared
+two-by-512 body with a policy head and a value head. Eight epochs over 2.95M
+rows in **1,199 s at 16,400 to 22,700 samples/s** on three to six CPU threads.
+Held-out accuracy: top-1 **0.342**, top-3 **0.635** against a uniform baseline
+of 0.071 and 0.214, value MAE 5.75.
+
+**And the accuracy is concentrated exactly where it is worthless.**
+
+| distance from the target | top-1 | top-3 |
+|---|---:|---:|
+| 1-5 | 0.628 | 0.869 |
+| 6-10 | 0.455 | 0.720 |
+| 11-20 | 0.355 | 0.636 |
+| 21-30 | 0.245 | 0.557 |
+| 31-45 | **0.189** | 0.517 |
+| 46-64 | **0.177** | 0.518 |
+
+| total relator length of the state | top-1 |
+|---|---:|
+| 2-10 | 0.511 |
+| 11-20 | 0.471 |
+| 21-30 | 0.392 |
+| 31-38 | 0.286 |
+| 39-43 | **0.199** |
+
+Records 31-60 are reached through states of length 31-43 at distances of 31-60.
+There the policy is at 0.18-0.20 against a 0.071 baseline. This is the same
+stratification every other architecture in this campaign hit, now measured
+inside the network itself rather than inferred from its failures.
+
+**Retraining on deep states only does not lift it.** 1,125,647 rows at distance
+25 and above, 13 epochs: top-1 went **0.185 -> 0.198** and was flat from epoch 1.
+Spending all the capacity and all the data on the band that pays buys nothing, so
+the ceiling is the problem and not the budget.
+
+**Off-distribution it is worse, and the critic is useless.** Replayed against the
+organisers' 424 certified paths (14,257 states, the only ground truth that
+exists): the certified move is top-1 on **0.258** and top-3 on **0.535**, which
+is honest generalisation, but the value head's MAE against true moves remaining
+is **16.13** where the mean remaining is 25.0. A critic that far out cannot order
+a frontier. Worth noting: those certified states have mean total length **10.3**,
+a third of the pool's, so the published training data does not live where the
+pool does either.
+
+### The control beat the network, and then the control scored
+
+40 pool challenges at record 31, beam 512, 200 steps, cap 44:
+
+| ranking | found | at or under the record | shortest |
+|---|---:|---:|---:|
+| policy (actor alone) | 2 | 0 | 67 |
+| hybrid (actor + critic) | 12 | 0 | 35 |
+| **total relator length, no network at all** | 12 | 0 | **33** |
+
+Head to head at beam 4096 on the 18 both solved: the network's paths are longer
+on **14 of 18**, median **71.5 against 52.0**, best 34 against 32. Only length
+scores, so the network is a net negative in the one dimension that pays.
+
+**The beam itself is the finding.** The same search with no network, ranked on
+total relator length, scales:
+
+| beam | found of 40 | shortest against record 31 |
+|---|---:|---:|
+| 512 | 12 | 33 |
+| 4,096 | 20 | 32 |
+| 16,384 | 12 of the closest 12 | **31, one tie** |
+| 65,536 | 5 of 5 | **31, two ties** |
+
+ac-07084 and ac-07163 both returned exactly 31 against a record of 31. **This is
+the first time anything in this campaign has landed ON a record in the 31-60
+band**, and it does it at cap 44 where the exact search cannot go at any slack.
+`submit` sent ac-07084 (2406, verified). ac-07163 is **not** a new find and the
+distinction matters: we already hold it at 31 from an earlier run, so the beam
+re-derived a path we own, which is a useful check that it can land on a known
+record and nothing more. Neither scores on stable_ac, because our stable path is
+the ac path plus two destabilises while the sac record there is ac + 1. So the
+honest count from the twelve closest targets at record 31 is **one new scoring
+line**.
+
+**And it stops at the record, measurably.** ac-07673 returned **32 at beam 4,096,
+32 at 16,384 and 32 at 65,536** - a sixteenfold budget increase for zero moves.
+Beam width buys the first ten moves cheaply and then nothing.
+
+**Where it matters it does not reach.** The 161 single-holder challenges at
+records 31-45, where a match pays 0.5 and a beat 1.0, at beam 16,384: the first
+nine gave 6 found and **0 scoring**, with paths of 38, 45, 47, 57, 65 and 194
+against records of 32 to 35. The sweep was left running (`runs/pool/policy/
+k1_len16k.out`) because it is the only lever with any slope left; the next run
+should collect it. The record-31 group that matched has k between 11 and 15,
+which is the old anti-correlation restated: the beam lands on records that
+everyone already ties, where 2^(1-k) is 0.00006.
+
+### Machine facts, measured
+
+- Network forward only: **31,551 states/s at batch 256 to 58,295 at batch 8,192**.
+  Forward and backward at batch 2,048: **17,992 states/s** on three threads with
+  the machine contended.
+- Scramble generation: **1.37-1.85M states/s** on the numba core.
+- **Estimate, derived from those measured rates**: one PPO run at the paper's
+  100M environment interactions costs about 2,000 s of action sampling plus about
+  22,200 s of update if PPO takes four passes over each rollout, so roughly
+  **seven hours per run**, and the environment itself is free. The paper's loop
+  is affordable here. It is simply aimed at a signal that is not present past
+  distance 30.
+- **There is a GPU, and the brief said there was not.** `nvidia-smi` reports an
+  **NVIDIA GeForce MX250, 2,048 MiB, compute capability 6.1, driver 582.53**.
+  numba lists it as SUPPORTED but `cuda.is_available()` is False because NVVM is
+  not installed, and the installed torch is **2.11.0+cpu**. A CUDA wheel does
+  exist for this interpreter (`torch-2.10.0+cu126-cp314-cp314-win_amd64`). It is
+  not obviously worth the swap: the beam search measured here spends its time in
+  node expansion and the candidate loop, not in the 516k-parameter forward, and
+  2 GB of VRAM on a Pascal part is perhaps five times this CPU on dense matmul.
+  Amey should decide, not the run.
+
+### Verdict on the trained-policy approach on this hardware
+
+**Trainable: yes, comfortably.** A network of the paper's shape trains at 20k
+samples/s, data costs nothing, and a full PPO run at the paper's scale is about
+seven hours.
+
+**Useful: no, and the reason is measured rather than argued.** The learned policy
+is four to nine times better than chance near the target and 2.5 times better
+than chance at distance 31-45; restricting the model to deep states does not move
+that; the critic does not transfer at all; and in the only test that pays, the
+network's paths are longer than ranking by total relator length on 14 of 18
+challenges. The paper's own PPO was a subset of greedy on 1,188 of 1,190 cases,
+which is the same result from the other direction.
+
+**What the run did leave behind is a better classical solver than we had.** A
+fixed-width beam over total relator length at cap 44 lands on records of 31,
+which nothing here has done before, and its cost curve is known: 512 to 65,536 is
+128 times the budget for two to nine moves, then flat.
+
+### What the next run should do
+
+1. Collect `runs/pool/policy/k1_len16k.out` (161 single-holder challenges at
+   records 31-45, beam 16,384). If any path is within 3 of the record, re-run
+   that id at beam 65,536; that is the only conversion path with a measured
+   slope.
+2. Refresh, then harvest records 18-22 at slack 4 and **4M nodes/side, not 10M**.
+3. Do not spend anything on: the trained policy as built (this entry), the cap
+   walk past slack 4, records 23-30 (settled), A*-origin leads, the long-record
+   tail, our own joint holds, or a native stable search.
+4. The open question with any slope left is whether the beam's length ranking can
+   be replaced by something better than the network tried here - and the honest
+   reading of this entry is that the next real gain is hardware or a different
+   idea, not another parameter.
+
+**Nothing was committed this run.** Five new files are local only:
+`runs/pool/policy_data.py`, `policy_net.py`, `policy_solve.py`,
+`policy_eval424.py`, `policy_export.py`, plus `runs/pool/policy/` and
+`runs/pool/skip_run0926b.txt`, `runs/pool/t_h0926.txt`.
+
+## 2026-09-27 00:45Z, the beam was taken to its limit and the limit is measured
+
+Continuation of the run above, at Amey's instruction to keep going toward top 3.
+The sweep left running overnight completed and five further mechanisms were
+tested. **Nothing scored, and by the end nothing left had a measured slope.**
+
+**Standing, unchanged all session**: ac rank 22, 0.0303, 149 held; stable_ac rank
+22, 0.0351, 131 held (snapshot 00:40Z). No submission this half of the run,
+because nothing produced a path at or under a record.
+
+### The single-holder band, measured in full
+
+The beam over **all 161 single-holder challenges at records 31-45** - the whole
+accessible volume where a match pays 0.5 and a beat 1.0 - at beam 16,384, cap 44,
+11,129 s:
+
+**112 found, 49 none, 0 at or under the record.**
+
+The gap distribution is the result, not the find rate:
+
+| gap, ours minus record | challenges |
+|---|---:|
+| +0 to +4 | 3 |
+| +5 to +9 | 3 |
+| +10 to +19 | 17 |
+| +20 to +34 | 36 |
+| +35 to +59 | 25 |
+| +60 and over | 28 |
+
+**Median gap +32. Median ratio ours/record 1.80.** Only four challenges came
+within five moves. Against that, beam width's measured slope is 2 to 9 moves per
+128-fold increase. Closing a median gap of +32 is arithmetic that does not work.
+
+### The four near misses, escalated until they stopped
+
+| challenge | record | k | beam 16,384 | 65,536 | 262,144 |
+|---|---:|---:|---:|---:|---:|
+| ac-05726 | 35 | 1 | 38 | 38 | - |
+| ac-06045 | 36 | 1 | 40 | 40 | - |
+| ac-08995 | 45 | 1 | 49 | 47 | **46** |
+| ac-00678 | 41 | 1 | 46 | 42 | **42** |
+
+Two reached **gap +1 against a single holder**, which is the most valuable
+position this campaign has ever been in: one move is a tie worth 0.5, two is an
+outright point. Then the beam stopped. **ac-00678 returned 42 at beam 65,536 and
+42 again at 262,144** - a fourfold increase, 126 million nodes, zero moves. Same
+signature as ac-07673 returning 32 at 4,096, 16,384 and 65,536.
+
+### Four ways to get one more move, all measured negative
+
+**Stochastic restarts do not help, so the beam's limit is the ranking and not
+basin collapse.** A length ranking collapses the beam onto near-identical short
+states, so the textbook fix is Gumbel noise on the score plus restarts, sampling
+different basins at the same total cost. 32 restarts at beam 8,192, temperature
+1.5, which is 2 to 12 times the compute of the single wide beam:
+
+| challenge | best wide beam | 32 noisy restarts | nodes spent |
+|---|---:|---:|---:|
+| ac-05726 | 38 | 38 | 376M vs 30M |
+| ac-06045 | 40 | **42** | 147M vs 32M |
+| ac-08995 | 46 | **53** | 188M vs 143M |
+| ac-00678 | 42 | **49** | 173M vs 126M |
+
+Equal on one, worse on three, at more compute on all four. That kills the
+diversity hypothesis directly rather than by inference.
+
+**Detour shortening gains nothing on a beam path, and this was checked with a
+control rather than believed.** `engine.shorten` had never been run on a beam
+path; `runs/pool/policy_shorten.py` does it. On all six paths within 8 of a
+record: **0 moves at depth 2, 3, 4 and 5** (depth 5 costs 16.7 s on a 42-move
+path). The result looked too clean, so a control was run: the same call on the
+same path with a deliberate two-move cycle planted in it cuts exactly two moves
+in 0.03 s. The tool works; the paths have no detours. That is what a length
+ranking means - it minimises length at every step, so its path is already locally
+tight. Shortening was built for greedy paths that wander.
+
+**The cap walk is closed on these targets, and the reason is memory.** At 4M
+nodes/side the walk returned none on all four with the presentation-independent
+ball signature. At 12M nodes/side, which the 26 Sep entry recorded as completing,
+it burned **1,808 s of CPU and 1.5 GB without printing one slack line** and had to
+be killed: 12M/side allocates about 2.5 GB inside the njit call, and that is
+thrashing on this machine whatever the commit limit says. The budget the machine
+can actually hold was measured directly on ac-00678 at slack 1:
+
+| nodes/side | table bits | nodes used | wall | nodes/s |
+|---|---:|---:|---:|---:|
+| 2,000,000 | 21 | 2,692,962 | 3.2 s | 838,307 |
+| 4,000,000 | 22 | 6,835,153 | 11.8 s | 580,299 |
+| 8,000,000 | 23 | 10,835,153 | 21.4 s | 505,254 |
+
+**6,835,153 and 10,835,153 differ by exactly 4,000,000, the whole budget
+increase.** One side consumes its entire allowance while the other finishes at
+about 2.8M. That is the backward ball, pinned numerically rather than inferred
+from repeated counts. Raising the budget feeds the ball and never the forward
+half. The walk re-run at 8M/side, the largest this machine holds: **0 of 4**, and
+ac-05726 returns **38 at slack 2**, exactly what the beam returned, then nothing
+at slacks 3 and 4. The exact search independently confirms 38 is the true minimum
+inside cap = size + 2 and that the record of 35 is held by a path leaving that
+box.
+
+**The wider cap and the trained policy were already closed** in the entry above.
+
+### Why this is the ceiling, in the one number that matters
+
+Rank 3 (Catsitter) went **585.14 at 14:50Z to 686.32 at 23:35Z**, which is
+**+11.6 points per hour**. Our best rate in the whole campaign was 12 Sep, 2.85
+to 24.5 points across about a day, under **1 point per hour**. This session's
+rate was **0 across roughly eleven hours and 175 targets** in four escalations
+and five mechanisms.
+
+The target is receding an order of magnitude faster than the best rate this
+method has ever achieved. That is not a parameter away. **Top 3 is not reachable
+from here and the honest thing is to stop rather than run another sweep.**
+
+What this session did establish, and it is worth keeping: a fixed-width beam
+ranked on total relator length reaches **gap +1 against single holders at records
+41 and 45**, which no search in this campaign had come near, and its exact
+stopping point is now known in five independent directions. If the ranking is
+ever replaced by something better - not the network tried here - those two
+challenges are one move from a point.
+
+### Skip lists were not corrupted
+
+The 161 beam attempts are recorded in **`runs/pool/beam_attempted.txt`** with the
+width used, the path found and the gap, and deliberately **not** folded into
+`skip_exact.txt`. That file records settled-ness of the EXACT search at a band's
+correct slack, and a beam attempt settles nothing; mixing them would break the
+one skip list the campaign trusts.
+
+### What the next run should do
+
+Nothing in the present method. The measured negatives now cover the trained
+policy, beam width past 262,144, stochastic restarts, detour shortening, the
+wider length cap, the cap walk at every budget this machine holds, records 23-30,
+A*-origin leads, the long-record tail, our own joint holds, and a native stable
+search. A run that starts by picking one of those is burning budget.
+
+The two things that are not measured negatives are both outside the machine: a
+solver of the class the leaders are actually running, and hardware that can hold
+a search whose backward half does not eat the whole budget. Both are Amey's
+decisions, not a run's.
+
+**Nothing was committed. Two further local files: `runs/pool/policy_shorten.py`
+and `runs/pool/beam_attempted.txt`, plus `--mode noisy`, `--temp`, `--restarts`
+and `--ids` added to `runs/pool/policy_solve.py`.**
+
+## 2026-09-27 02:30Z, the bidirectional beam, and why a meet in the middle cannot happen here
+
+Resumed at Amey's instruction with the goal reaffirmed. The one lever my ceiling
+report did not list as tried was a **bidirectional** beam: everything that has
+ever scored here is bidirectional, while the beam that reached gap +1 is
+forward-only. Built it, validated it, and measured it to a mechanism. It is a
+negative, and for the first time the reason is quantified rather than inferred.
+
+**Standing**: refreshed at 01:00Z. ac rank 22, 0.0303, 149 held; stable_ac rank
+22, 0.0351, 131 held. **Nothing submitted: nothing came in at or under a record.**
+Rank 3 (Catsitter) is now 692.78 on ac, up from 585.14 at 14:50Z yesterday.
+
+**Harvest first, as always.** The refresh opened **nothing new**: the open and
+unsettled band at records 18-30 is the same ten challenges already run at slack 4
+earlier in this session, for three leads and no points.
+
+**A detail worth having on the two best targets.** ac-00678 and ac-08995 both have
+`sac_best = ac_best + 2` with **k = 1 on both boards** (41/43 and 45/47). Our
+harness emits stable as the ac path plus two destabilises, so one move on either
+is worth **0.5 on ac and 0.5 on stable**, and two moves is worth **2.0 in total**.
+That is double what the previous entry assumed and it is why they were worth this
+much effort.
+
+### What was actually new about it
+
+Three search shapes already existed and it matters that this is not a fourth
+version of one of them:
+
+| | shape | behaviour |
+|---|---|---|
+| `jit_tieband.solve_bidir` | bidirectional, **exhaustive** inside a hard cap | true minima, cannot leave the cap |
+| `bestfirst.py` | bidirectional, length as a **global** bucket priority | reaches far, paths not minimal |
+| `policy_solve.py --mode length` | forward-only, **level-synchronous** beam of fixed width | the one that reached 42 against 41 |
+
+The missing combination is the third shape run from both ends. Fixed width per
+depth level is what made the forward beam work, because it forces progress in
+depth while holding B diverse states per level, which a global priority queue
+does not. `runs/pool/bibeam.py` does that, with the backward half built once per
+(width, depth, cap) and reused, since it is presentation-independent.
+
+**It was validated before it was believed**: on eight challenges with records 8 to
+13 it reproduced the record exactly, 8 of 8, every path replayed.
+
+### It returns the forward-only answer, at every backward configuration
+
+All at forward beam 32,768 on ac-00678, record 41:
+
+| backward half | states | result | nodes | time |
+|---|---:|---:|---:|---:|
+| none (forward-only control) | - | **43** | 16,844,842 | 67 s |
+| short-ranked, depth 12 | 1,875,787 | **43** | 52,168,746 | 196 s |
+| band-ranked at length 38, depth 8 | 136,187 | **43** | 52,168,746 | 156 s |
+| band-ranked at length 38, depth 24 | 660,475 | **43** | 52,168,746 | 223 s |
+
+A backward set of **1.88 million states, 57 times the forward beam width**,
+changes the answer by zero moves at three times the cost. On the four near-miss
+targets at forward beam 16,384 the bidirectional run returned 38, 40, 49, 46 -
+**identical to the move** to the forward-only beam at the same width.
+
+**The identical node counts across different backward sets are expected, not the
+bug this campaign has been caught by twice.** The count is the forward beam's own
+expansion total, and the forward beam is deterministic and unaffected by what the
+backward set contains. Checked before reporting.
+
+### Why, measured
+
+The run was instrumented to report where the winning join actually lands. On
+ac-00678 against the 1,875,787-state backward set:
+
+    join f=36 + b=7 at total relator length 11, 85 joins seen
+
+Three numbers, and they close the idea:
+
+1. **85 joins.** From 52.2 million forward candidates tested against 1.88 million
+   backward states, the two frontiers intersected 85 times in the whole run. Two
+   sparse sets do not meet in this space.
+2. **The join is at total relator length 11.** Not in the middle. Meets happen
+   only where the state space is small enough for sparse sets to collide, and that
+   is the short-length region immediately around (x, y).
+3. **f = 36, b = 7.** The forward beam had already descended all the way to a
+   near-trivial state on its own; the backward set contributed seven free moves at
+   the very end, which is no better than the forward beam's own last seven.
+
+So bidirectionality here is **degenerate**: it shortens the tail of a descent the
+forward beam was going to finish anyway. That also explains the band-ranked
+failure without a further experiment. Pulling the backward frontier up to length
+38, where the forward beam actually spends its time, removes the only region where
+a meet is possible, so it does worse (43 where forward-only at 65,536 gets 42).
+
+**One instinct of mine was wrong and checking it was the right call.** I expected
+a backward frontier to need depth about 18 to reach total length 38, on the
+grounds that conjugation adds at most two letters. It reached mean length 36.1 at
+**depth 7**, because concatenation replaces a relator with a product and grows
+length geometrically. The depth floor I assumed does not exist; the barrier is
+state-space size, which is what the 85 joins measure. Asserting the bound would
+have produced a wrong explanation of a right result.
+
+### Nothing left has a measured slope, and this is the third independent statement of it
+
+The closed list now covers: the trained policy, beam width past 262,144,
+stochastic restarts, detour shortening, the cap walk at every budget this machine
+holds, the wider length cap, **the bidirectional beam at every backward width,
+depth and ranking tried**, records 23-30, A*-origin leads, cold sweeps in every
+band, the unsolved pool, the long-record tail, and walking our own holds into
+beats.
+
+The board, for scale: rank 3 went **585.14 to 692.78 in about ten hours**, roughly
+**+11 points per hour**. This campaign's best rate ever was under 1 point per
+hour; the last two sessions produced 0 across some twenty hours and around 180
+targets. ac-00678 and ac-08995 remain one move short, and one move is worth 1.0
+across the two boards, but five distinct mechanisms have now failed to find it.
+
+**The honest position is unchanged and better evidenced: top 3 is not reachable
+from this machine by this method.** What is left is a solver of the class the
+leaders run, or hardware that can hold a search whose backward half does not
+consume the whole budget. Neither is a parameter and neither is a run's decision.
+
+**Nothing was committed.** New local file `runs/pool/bibeam.py`; no other changes.
+
+## 2026-09-27 17:40Z, shortcutting, the long-record band, and the ratio that ends the argument
+
+Three things this session: a persistent harvest cycle, path shortcutting with the
+exact search, and a paired test of the long-record band. All three are negatives.
+The last of them produced the single cleanest statement of this campaign's ceiling
+and it is a number, not an argument.
+
+**Standing.** ac rank 22, **0.0243**, 149 held; stable_ac rank 22, **0.0281**, 131
+held (17:40Z). Down from 0.0303 and 0.0351 with the held counts UNCHANGED, so the
+loss is entirely other teams tying our records. Rank 3 is now **memcon.ai at
+1,016.35**, where it was Catsitter at 692.78 twelve hours earlier. **Nothing was
+submitted: nothing came in at or under a record.**
+
+### The harvest cycle has a measured rate of zero
+
+Six refreshes: 01:35, 01:50, 02:20, 02:35, 02:45 and 16:40Z, the last spanning a
+thirteen-hour gap. **Every one returned 0 open and unsettled challenges at records
+18-30.** The ten that were open at the start of the session were run at slack 4
+and are now recorded in `skip_exact.txt` (1,245 -> 1,255).
+
+This matters because the harvest was the one thing with a nonzero rate. The 12 Sep
+entry recorded the band refilling as other teams pushed long records down into it
+(records 31-60 went 1,250 to 1,392 in a night). **That mechanism no longer
+operates at records 18-30.** There are 373 challenges at records <= 30 and every
+one is either held by us or settled; across fifteen hours the field pushed nothing
+new into the range the exact search can reach. The harvest is not a slow source of
+points, it is an empty one, and the score falling while the holds stay flat is the
+same fact from the other side.
+
+### Shortcutting: the paths are locally minimal, and now proven so
+
+The idea was the right shape and it is not `engine.shorten`. Shorten hunts
+detours of radius at most `depth` between states already on a path. Shortcutting
+asks the exact search for the TRUE MINIMUM between two concrete states si and sj.
+No tool here could answer that, because `jit_tieband.search_bidir` hardcodes its
+backward start as (x, y); `runs/pool/shortcut.py` parameterises it.
+
+**Validated first, on a planted control.** Take a path the exact search proves
+optimal, splice six wasted moves into it (three copies of the involution pair
+0,0), and confirm shortcutting removes exactly them: **5 of 5 recovered the
+optimal length**, endpoint preserved.
+
+Then on the two targets one move from a point, sweeping every window of span 6 to
+22:
+
+| challenge | record | path | windows | splices | moves saved |
+|---|---:|---:|---:|---:|---:|
+| ac-00678 | 41 | 42 | 493 | **0** | 0 |
+| ac-08995 | 45 | 46 | 561 | **0** | 0 |
+
+**Instrumented, because 0 of 1,054 windows is the kind of number that is either a
+result or a bug.** For every window, the length the exact search returns minus the
+length we hold:
+
+    delta  +0: 467     delta > 0: 0     delta < 0: 0     unreached: 26
+
+**467 of 467 reachable windows re-derived our own length exactly.** Never longer -
+which is the check that matters, because our own window is a witness of that
+length, so a longer answer would have proved the search was not finding minima and
+that the idea had never been tested. Never shorter either.
+
+So this is the second of the two possible results, the one that closes the idea:
+**our 42-move path for ac-00678 is minimal over every subpath of span 6 to 22.**
+The missing move is not recoverable by any local reoptimisation. The holder's
+41-move path differs from ours globally, not in any 22-move stretch. That also
+says something about the structural ten percent gap: **our paths are locally
+optimal and globally too long**, so the holders are in a different basin rather
+than a better-polished version of ours.
+
+### The long-record band: paired, and the cap was never the constraint
+
+The argument for this band was good: 2,841 single-holder challenges sit at records
+61 or above, each worth a full point, and only 25 attempts had ever been made
+there, which cannot distinguish a 0 percent rate from 3 percent. The stronger
+version used this campaign's own data - the beam found paths on 112 of 161
+challenges at records 31-45, and those paths have **median absolute length 74 with
+80 percent under 121** - so if length were independent of the record, every one of
+the 1,049 single-holder challenges above record 121 would be a free beat.
+
+Tested on a stratified 40 (15 at records 61-120, 15 at 121-300, 10 at 301+;
+records 63 to 1,147; presentation size median 30, the same as every other band):
+
+| cap | found | at or under the record | s/attempt |
+|---:|---:|---:|---:|
+| 44 | **1 of 40** | 0 | 110 |
+| 80 | **3 of 40** | 0 | 140 |
+
+Find rate 1/40 = 2.5% [0.4%, 12.9%] against **69.6% [62.1%, 76.1%]** at records
+31-45. Non-overlapping: the band is genuinely harder, presentation size is
+identical, so **record length is a proxy for difficulty after all**, exactly as the
+13 Sep entry said. The earlier 0/13 was not a sample-size artefact.
+
+**Raising the cap looked like it helped and did not, and the check that settled it
+was replaying the paths.** Cap 80 found three where cap 44 found one, which is
+Fisher p = 0.62, not significant. More decisively, every one of the three paths was
+replayed and its peak total relator length recorded:
+
+    ac-08370  len 109 vs record 67   peak length 27
+    ac-03941  len 209 vs record 76   peak length 29
+    ac-02900  len 235 vs record 87   peak length 23
+
+**All three fit inside the old cap of 44 with room to spare.** The cap was never
+binding; widening it merely reshuffled which 16,384 states survive each level. The
+hypothesis is closed on a mechanism, not on a rate.
+
+And the three finds are 1.6, 2.8 and 2.7 times their records. The argument
+required path length to be roughly constant regardless of the record. It is not:
+**it scales with the record.**
+
+### The ratio, across everything the beam has ever solved
+
+Every distinct challenge any beam run has solved, 25 result files, 150
+challenges, ratio = our length / the record:
+
+| ratio | challenges |
+|---|---:|
+| exactly 1.00 | **10** |
+| strictly below 1.00 | **0** |
+| median | **1.76** |
+
+**In 150 solved challenges this solver has never once beaten a record.** The ten
+it matched are at k = 12 to 41 - records that a dozen to forty teams already
+share, where 2^(1-k) is between 0.0005 and 0.0000000000005. That is the campaign
+in one line: it can match what everybody already has, and has never produced an
+outright point.
+
+At 140 s per attempt the 1,684 single-holder targets above record 88 are 66
+CPU-hours, and the measured scoring rate to spend them against is 0 of 40 with a
+95 percent upper bound of 8.8 percent. But the upper bound is not what decides it.
+The ratio does: **scoring requires ratio <= 1, and 150 measurements put the
+minimum at 1.00 and the median at 1.76.**
+
+### Plainly
+
+Fourteen mechanisms are now closed, three of them this session with a mechanism
+rather than a rate. The harvest, the only source with a nonzero rate, measured zero
+over fifteen hours. The score is falling while the holds stand still. Rank 3 moved
+from 692 to 1,016 in twelve hours; our total is 0.0243.
+
+**Top 3 is not reachable from this machine by this method, and the ratio is why.**
+Not the budget, not the cap, not the band, not the ranking: this solver's output is
+between 1.00 and 5.88 times the record and has never been below 1.00. A method that
+cannot produce a path shorter than a record cannot take one, at any scale. Closing
+that needs a different class of solver, which is a build and a hardware decision,
+not a run.
+
+**Nothing was committed.** New local files this session: `runs/pool/shortcut.py`,
+`runs/pool/suffix_opt.py`; `skip_exact.txt` grew by the ten settled ids.
+
+---
+
+## 16 October 2026 — every scoring opportunity on this machine is already sent
+
+The question this run was asked is whether anything solved here is still
+unsubmitted. The campaign wrote solutions into one directory per run and each
+directory carries its own `submitted.jsonl`, so no single ledger can answer it:
+a path found in run A and sent from run A is invisible to run B. The
+leaderboard can answer it, and `runs/pool/reconcile.py` now does, by reading
+the API rather than any local ledger.
+
+It pulls the full 10,115-challenge snapshot for each problem, which carries the
+current record and the number of teams tied at it, then the team-challenges
+endpoint, which lists exactly what is scoring for us, then every solution file
+under `runs/pool`. 792 distinct scored challenges are solved on this machine
+across 88 result files.
+
+| | `ac` | `stable_ac` |
+| :--- | ---: | ---: |
+| solved here | 396 | 396 |
+| ties the record, already held | 149 | 131 |
+| longer than the record | 247 | 265 |
+| beats the record | **0** | **0** |
+| unsolved by anyone | **0** | **0** |
+| ties a record we do not hold | **0** | **0** |
+
+**Actionable: zero.** Everything that can score has been sent, and everything
+else is longer than the record and would score nothing. The 904 solutions in
+`runs/bench/ms1190` are the Miller-Schupp benchmark family, ids `ms-NNNN`, not
+the scored pool, and are correctly outside this count.
+
+This is the same conclusion the 25 September entry reached from the other
+direction, and it is now closed against the live board rather than against the
+beam's own output: the ratio of our length to the record has a minimum of 1.00
+over 150 measurements, so there is no path here shorter than a record to send.
+
+Standing at the 2026-10-16T01:40Z snapshot: `ac` rank 28 of the ranked field,
+score 0.0003, 149 held; `stable_ac` rank 25, score 0.0016, 131 held. The score
+keeps falling as other teams match the same records, which is the `2^(1-k)`
+rule working as designed and not a regression on our side.
+
+Committed this session: the nine solvers written since the last commit, the two
+that changed, and `reconcile.py`. No sequence left the machine.

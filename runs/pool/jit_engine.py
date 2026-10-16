@@ -14,6 +14,8 @@ it is submitted.
 Usage (from the repo root):
   python runs/pool/jit_engine.py          # equivalence with the Python engine, then speed
 """
+import os
+
 import numpy as np
 from numba import njit
 
@@ -22,7 +24,12 @@ from numba import njit
 # presentation totals 40, so 44 covers every search that respects its cap.
 # solve_bidir refuses a cap this cannot hold. Halving this from 64 is what
 # lets several searches share the machine.
-MAXLEN = 44
+# ACC_MAXLEN raises the ceiling so the cap walk can go past slack 8. The
+# walk is the only seam that scores, and on presentations of total length
+# 35 to 40 it was being stopped by this buffer rather than by evidence:
+# cap + 2 <= MAXLEN allowed only slack 2 at size 40. Cost is linear, four
+# arrays of max_nodes * MAXLEN bytes.
+MAXLEN = int(os.environ.get("ACC_MAXLEN", "44"))
 GENS = (1, -1, 2, -2)
 
 

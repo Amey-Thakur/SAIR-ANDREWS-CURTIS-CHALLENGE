@@ -26,11 +26,16 @@ from src.search import engine as E  # noqa: E402
 from jit_tieband import solve_bidir  # noqa: E402
 from jit_engine import MAXLEN  # noqa: E402
 
-SLACKS = (1, 2, 3, 4, 5, 6, 7, 8)
+# The ceiling used to be 8. ac-00104 needed 5, so 8 was never measured as
+# the end of the seam, only as where the list stopped; and on a size-36
+# presentation MAXLEN 44 cut the walk off at 6 regardless. Both are now
+# arguments: argv[5] is the top slack, ACC_MAXLEN the buffer.
+TOP = int(sys.argv[5]) if len(sys.argv) > 5 else 8
+SLACKS = tuple(range(1, TOP + 1))
 LIST = sys.argv[1] if len(sys.argv) > 1 else "runs/pool/nearmiss.txt"
 NODES = int(sys.argv[2]) if len(sys.argv) > 2 else 8_000_000
 OUTDIR = sys.argv[3] if len(sys.argv) > 3 else "runs/pool/nearmiss"
-BITS = 24
+BITS = int(sys.argv[4]) if len(sys.argv) > 4 else 23
 
 targets = []
 for line in open(REPO / LIST, encoding="utf-8"):

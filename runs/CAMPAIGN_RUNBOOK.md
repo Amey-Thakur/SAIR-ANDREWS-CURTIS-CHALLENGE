@@ -2,8 +2,12 @@
 
 This file is the whole brief for a scheduled run. A scheduled run starts with
 no memory of the conversation that set it up, so everything needed is here.
-`runs/` is gitignored: this runbook, the pool, every solution and every log
-stay on this machine and are never committed.
+`runs/` is partly published and partly private, and `.gitignore` is what
+decides which. This runbook, `runs/campaign_log.md` and the solvers in
+`runs/pool/*.py` are committed, so the Proof Track results can be
+corroborated. Everything else under `runs/` stays on this machine: the move
+sequences above all, because publishing them would let any team resubmit our
+paths verbatim.
 
 ## Mission
 
@@ -25,9 +29,12 @@ submissions**. It does not authorise anything outside it.
 3. **Never submit a path the local verifier does not replay**, and never send
    a payload shape guessed ahead of the published schema. `submit.py` enforces
    both; do not bypass it.
-4. **Never commit anything under `runs/`.** Sequences stay private during the
-   competition. Before every commit run `git status --short` and confirm no
-   `runs/` path is staged.
+4. **Never commit a solution sequence.** `.gitignore` already allows exactly
+   three things under `runs/`: this runbook, `campaign_log.md`, and
+   `runs/pool/*.py`. Everything else there, including every `solutions.jsonl`
+   and every `submitted.jsonl`, stays private while the competition runs.
+   Before every commit run `git status --short` and confirm nothing staged
+   under `runs/` is outside those three.
 5. **Campaign code stays private until the 30 Nov 2026 deadline.**
    `src/search/engine.py`, `src/search/campaign.py`, `src/harness/submit.py`,
    `src/harness/launch_watch.py` and `tests/test_engine.py` are gitignored so
