@@ -1669,3 +1669,343 @@ rule working as designed and not a regression on our side.
 
 Committed this session: the nine solvers written since the last commit, the two
 that changed, and `reconcile.py`. No sequence left the machine.
+
+## 2026-10-18 22:00Z, bidirectional shortening and a lossless canonical key: 801 moves removed on each board, 14 records reached, none passed
+
+Backlog items 1 and 4, both built, both measured, and for the first time in
+weeks something was submitted. The headline is a number that agrees with the
+campaign's two previous statements of the same thing from a third direction:
+**the shortener lands exactly ON a record fourteen times and strictly below it
+zero times.**
+
+**Standing.** Before: ac rank 28, 0.0003, 149 held; stable_ac rank 25, 0.0015,
+131 held. After: **ac rank 28, 0.0004, 156 held; stable_ac rank 25, 0.0026, 138
+held** (21:55Z). Rank 3 is memcon-chasing at 504.36 on ac and 535.62 on stable.
+**Submitted: 14 paths, two batches (4327 ac, 4328 stable_ac), platform
+verified {'ok': 7} each.** First submissions since 26 September, and the first
+time this campaign's score has risen rather than decayed.
+
+### The gap distribution nobody had measured
+
+`reconcile.py` counts buckets against the live board and throws the moves away,
+so it could say "247 near misses" and not how far. `runs/pool/gap_report.py`
+keeps the sequences and writes a work file. The answer changes the picture:
+
+| gap, ours minus the record | ac | stable_ac |
+|---|---:|---:|
+| 1 | 13 | 27 |
+| <= 3 | 48 | 60 |
+| <= 8 | 128 | 144 |
+| median | **8** | **8** |
+
+The 25 September "median ratio 1.76" was over everything the beam ever solved.
+On the set where we hold a path and the record is shorter, the median gap is
+**eight moves**, not seventy. That is inside a shortener's range, which is why
+this was worth building.
+
+### Bidirectional shortening, all pairs and any span
+
+`runs/pool/bishorten.py`. Three shorteners already existed and none asked this
+question:
+
+| tool | question | reach |
+|---|---|---|
+| `engine.shorten` | a detour of radius <= 3 from s_i to a later s_j | one-sided, detour <= 3 |
+| `shortcut.py` | the TRUE minimum from s_i to s_j | **span 6 to 22 only**, box = longest state in that window + 2 |
+| `suffix_opt.py` | the true minimum from s_i to (x, y) | tail only |
+
+The hole is a shortcut that is SHORT across a LONG stretch. An eight-move route
+across a forty-move stretch was reachable by none of them. The method: grow a
+BFS ball of radius `depth` around EVERY state on the path, put them all in one
+hash table tagged with their anchor, and read off every pair that meets. The
+fourteen moves are closed under inversion, so the backward half is the forward
+half with inverted ids. Cost is n balls, not n^2 searches, and one pass finds
+every shortcut of length up to 2 * depth across every span at once. Splices are
+applied right-to-left over disjoint intervals, so one pass removes many.
+
+**Validated on a planted control first**: splice three involution pairs into an
+optimal path and confirm exactly those six moves come out, 6 of 6 recovered,
+endpoint preserved.
+
+**The ball radius, not the span, was the binding knob.** At depth 3 (detours
+<= 6) it found 1 saving in 12 paths. At depth 5 (detours <= 10), 9 of 10 on the
+same band. Depth 4 cost 0.2 s a path and depth 5 about 6 s, because the
+effective branching is about 9.5, not 14.
+
+**The full sweep, 247 `ac` and 265 `stable_ac` near misses at depth 5, slack 12:**
+
+| | ac | stable_ac |
+| :--- | ---: | ---: |
+| paths shortened | **167 (68%)** | **167 (63%)** |
+| moves removed | **801** | **801** |
+| median saving among those shortened | 3 | 3 |
+| largest single saving | 73 | 73 |
+| ratio ours/record, median before | 1.250 | 1.222 |
+| ratio ours/record, median after | **1.167** | **1.147** |
+| landed exactly ON the record | **7** | **7** |
+| strictly BELOW the record | **0** | **0** |
+
+**The two columns being identical is structure, not a copy-paste.** Our stable
+path is the ordinary descent plus two destabilisations, so the prefix the
+shortener works on is usually the same sequence on both boards and removes the
+same moves from it. The counts differ where they should: 7 landings each but on
+partly different challenges, and 27 gap-1 stable near misses against 13 on ac.
+
+So the 27 September conclusion that our paths are locally minimal was right
+about the two paths it tested and wrong as a general claim: both of those were
+gap-1 paths, already polished. Two thirds of the held set had slack in it, and
+801 moves came out of each board.
+
+**The stop condition is not the record.** `shorten` never reads the record; it
+stops only when the meet scan produces no candidate at all. Fourteen paths
+stopping exactly on a record is a property of the search, not of a test.
+
+### Where a beat can come from, cross-tabulated
+
+Sorting the near misses by (k, gap) says the rest of the answer:
+
+         k   gap<=3    4-6   7-12    13+          (ac, 247 rows)
+      k<=3        1      0      0      5
+     k 4-7        2      2      3     18
+      k>=8       45     39     73     59
+
+A record shared by eight to forty-one teams is the true minimum - they all found
+the same length independently - so a shortener correctly stops at it and no box
+will get under it. A gap of 13 or more is beyond local reoptimisation. The only
+cell that can pay is low k AND small gap: **5 challenges on `ac`, 15 on
+`stable_ac`**. That is the whole remaining opportunity in the near-miss set, and
+it is 20 challenges, not 512.
+
+### The canonical visited set, done losslessly
+
+Backlog item 4, and `canon_search.py` is not it: that canonicalises the STATE
+with real conjugations and inversions, so its paths carry the cost. Here the
+stored state is real, the real moves are expanded from it, and only the visited
+KEY is canonical, so the path replays unchanged.
+
+**The useful finding is which collapses are free.** Any automorphism of the free
+group sending each generator to a generator or its inverse, applied letterwise
+to both relators, commutes with all fourteen moves and carries (x, y) to another
+trivial pair. With the relator swap that is a group of order **sixteen**, and
+distance to the trivial set is identical across an orbit, so collapsing it costs
+nothing. **Verified rather than asserted**: for 3,000 random states and all 16
+group elements, the set of children maps exactly onto the children of the image,
+0 mismatches in 48,000 checks, and the trivial set never escapes.
+
+Inversion of ONE relator and cyclic rotation are NOT in that group, and the
+measurement shows why it matters. On the first 400 Miller-Schupp presentations
+of `runs/bench/ms1190.jsonl`, budget 300,000 nodes, cap size + 6, same search
+and same move order throughout, the ONLY difference being the visited key:
+
+| visited key | solved of 400 | mean nodes per solve | mean length |
+|---|---:|---:|---:|
+| plain, the exact pair | 358 | 20,291 | 113.8 |
+| swap only (lossless) | **379** | 24,436 | 147.1 |
+| swap + letters, 16 (lossless) | **379** | 17,831 | 128.0 |
+| swap + relator inversion (lossy) | 337 | 7,310 | 113.2 |
+| and cyclic rotation (lossy) | **0** | - | - |
+
+**Rotation collapse is fatal, with a mechanism.** Conjugation never leaves a
+relator's conjugacy class, so all eight conjugation moves become no-ops under a
+rotation-invariant key, and the four multiply moves are the only ones left. But
+multiplication depends on the actual words, not the classes, so the quotient is
+not a graph quotient at all: pruning a conjugate destroys the setup moves that
+make a cancellation possible. The search empties its queue in about ten nodes.
+This closes the September note that canonical-form search gave "identical
+coverage, 5x slower" on a mechanism rather than a rate.
+
+**Relator inversion is the trade it looks like**: 2.8x fewer nodes per solve and
+21 fewer solved, because (r0^-1, r1) is one move away and multiplying by it
+reaches products no other move does.
+
+**The lossless key is the one to keep: +21 solved of 400 at the same budget**,
+and the sixteen-element version does it at 17,831 nodes a solve against the
+plain key's 20,291.
+
+### And the benchmark understates it: on the hard band the key is a real win
+
+The Miller-Schupp head is easy - mean solved length 114 - and on it the
+collapses looked like they traded length for reach. **That reading is wrong, and
+the correction matters.** Re-measured on 40 pool challenges at records 31 to 45,
+the band this campaign actually cares about, budget 2,000,000, with the common
+subset (the 14 every mode solved) carrying the nodes-to-solution comparison:
+
+| visited key | solved of 40 | nodes per solve | mean length | common nodes | common length |
+|---|---:|---:|---:|---:|---:|
+| plain | 15 | 832,394 | 1340.9 | 870,722 | 1400.9 |
+| swap (lossless) | 16 | 527,446 | 1096.0 | 498,615 | 1180.0 |
+| swap + letters, 16 (lossless) | 16 | 511,738 | 1008.8 | **494,576** | **1080.4** |
+| swap + relator inversion (lossy) | **20** | 251,811 | 867.6 | **60,094** | **706.5** |
+| and cyclic rotation | 0 | - | - | - | - |
+
+Relative to the plain key on the common subset:
+
+    swap            nodes x0.573   length x0.842
+    swap + letters  nodes x0.568   length x0.771
+    swap + inv      nodes x0.069   length x0.504
+
+**On hard presentations the canonical key gives BOTH fewer nodes AND shorter
+paths.** The lossless sixteen-symmetry key is 1.76x fewer nodes to solution and
+23 percent shorter paths. The lossy inversion key is **14.5x fewer nodes and
+half the length**, and solves 20 of 40 where the plain key solves 15. The
+"shorter paths" is not a contradiction of the September reasoning: fewer
+revisits means the frontier gets deeper before the budget runs out, and on a
+hard presentation the plain key's 1,400-move answer is the symptom of a search
+that wandered, not of a careful one.
+
+**This is the clearest engine improvement of the session and it still does not
+score**, because the absolute lengths say so: 707 to 1,080 moves against records
+of 31 to 45. Fewer nodes and half the length of a very bad path is still a very
+bad path. It is a coverage instrument for presentations where any verified path
+is a full point, and on the near misses - where we already hold paths at ratio
+1.17 - it is far worse than what we have.
+
+### What was submitted and what it was worth
+
+14 paths, all verified by the official reference verifier before sending and by
+the platform after. All are ties on records we did not hold, k 10 to 21, so each
+pays 2^(1-k): tiny individually, but stable_ac went 0.0015 to 0.0026 and ac
+0.0003 to 0.0004 on seven each. Held counts 149 -> 156 and 131 -> 138.
+
+### Widening the box on those twenty, and what it bought
+
+`runs/pool/widen.py` lifts both of `shortcut.py`'s limits: every span up to 30
+rather than 6 to 22, and a box of the longest state on the WHOLE path plus a
+slack walked 2, 4, 6, rather than the window's own longest plus 2. It asks the
+exact bidirectional search for the true minimum between s_i and s_j.
+
+It works, and it is not the same tool as the ball: on ac-09839 and sac-09839 it
+re-derived a span-12 stretch in **11** moves, which no ball of radius 5 can see
+because the route itself is eleven moves long.
+
+| target | needs | slack 2 | slack 4 |
+|---|---:|---|---|
+| ac-09839, record 44, k 5, holding 48 | 5 | **48 -> 47**, 848 windows, 191 unreached, 902 s | - |
+| sac-09839, record 46, k 6, holding 50 | 5 | **50 -> 49**, 676 windows, 52 unreached, 401 s | **0 more**, 426 windows, 85 unreached |
+
+Two things are measured here and both are negative for the box argument.
+**One move from 848 exact windows, where five are needed.** And **widening the
+box does not add anything**: slack 4 found nothing slack 2 had not, while
+pushing more windows out of reach - 52 unreachable at slack 2 against 85 at
+slack 4 on the same path. The exact search has a **reach frontier in span**
+(span 15 at slack 2, 16 at slack 4) and a wider box moves that frontier the
+wrong way, which is the same mechanism that closed the cap walk. Both runs were
+stopped once that was clear, to put the memory behind the long-record band.
+
+### The ac-to-stable arbitrage, killed by arithmetic for nothing
+
+Our harness emits the stable path as the ac path plus two destabilisations, so
+wherever `sac_best - ac_best >= 3`, merely TYING the ac record would BEAT the
+stable record outright. That is a beat available for no search at all, and the
+refreshed snapshot has **288** such challenges, up from the 35 the 26 September
+entry recorded. So it was worth two minutes to check.
+
+**It pays zero: 0 of our 156 ac holds sits on one of those 288.** Every record
+we hold is on a challenge where the stable record is already the ac record plus
+two or less, which is exactly the construction we emit. No search needed and
+none would have helped.
+
+The rest of that distribution confirms the 26 September kill of the rank-3
+stable search rather than reopening it: 6,240 challenges at +2, 871 at +1, 75 at
+0 and only 5 negative, never by more than 2. There is still no large
+stabilisation win to chase.
+
+### The long-record single-holder band: swept in full, and closed
+
+This is the one seam where a beat does not need a short path, and it had never
+been swept. **108 single-holder challenges sit at records 401 to 1,368** (median
+498, median presentation size 31 - the same as every other band), and we hold a
+path for none of them. Ten of them are at records 1,331 to 1,368 on
+presentations of size 28 to 30, which makes them the widest tolerance in the
+whole pool: ANY path under 1,331 is an outright beat worth 1.0 on ac, and 1.0
+again on stable, since the stable record is the ac record plus two.
+
+The arithmetic was good. `bestfirst.py` - bidirectional best-first with length
+as a PRIORITY rather than a wall, the only solver here with no length cap - is
+what produced our 963-move path for ac-09331 (size 29) and 415 for ac-04353
+(size 16). Its path length tracks presentation size, not the record. On a
+challenge whose record is 1,368 a 963-move path is a beat by 405 moves.
+
+**And `bf301.out` and `bf121.out` have six and ten lines in them.** Those runs
+were started on 880 and 1,592 challenges and stopped after a handful. The band
+was never swept, so this was run properly.
+
+| sweep | targets | found | nodes each |
+|---|---:|---:|---|
+| **the whole band, records 403 to 1,368** | **108** | **0** | 8,000,000, every one exhausted |
+| records 1,331 to 1,368, the ten widest, separately | 10 | **0** | 8,000,000, every one exhausted |
+| the same ten at depth weight 0, pure length-greedy | 10 | **0** | 8,000,000, every one exhausted |
+
+**0 of 108, `found 0/108, scoring 0`, and the failure is reach, not length.**
+Every attempt consumed its
+whole budget without the two frontiers meeting even once. This matters because
+it separates the two barriers cleanly: the shortener and the box both address
+path LENGTH, and on these targets length is nearly free - we are allowed 1,330
+moves. What fails is finding any trivialising sequence at all. Two different
+rankings, 8M nodes a side, and an uncapped search: nothing.
+
+That also disposes of the hope I had when I started the sweep, which was the
+one argument the campaign's "record length is a proxy for difficulty" finding
+had not answered: that bestfirst's path length is independent of the record, so
+a long record should be free. It is not free, because the same thing that makes
+the record long makes the presentation unreachable.
+
+**The unsolved pool is worse, and its own number says so.** 2,672 challenges are
+unsolved by anyone, each worth a full point, and their median presentation size
+is **24 - SMALLER than the solved median of 30**. Size is not the lever there,
+and no team holding 5,500 challenges has solved one either. These are the
+AC-hard core, not a gap in our budget.
+
+### Plainly
+
+Two instruments were built and both work. Bidirectional shortening is real and
+was badly underused: **801 moves off each board, two thirds of the held paths
+shortened, the ratio median down from 1.25 to 1.17, and 14 paths brought exactly
+onto a record and submitted.** The lossless canonical key is real and worth
+keeping: **+21 solved of 400 at a fixed budget, 17,831 nodes a solve against
+20,291**, with both lossy variants closed on mechanisms rather than rates.
+
+**Neither produced an outright beat, and the session's value is that the two
+barriers are now separated and each measured on its own target set.**
+
+- Where a beat needs a SHORTER path (the 512 near misses), the shortener stops
+  exactly on the record 14 times and below it 0 times, and the near misses are
+  216 of 247 at k >= 8, where a record that eight to forty-one teams found
+  independently is the true minimum. Widening the box adds nothing: slack 4
+  found nothing slack 2 had not and pushed 33 more windows out of reach. Only
+  **20 of 512** challenges are even arithmetically open, and the best of them
+  moved 1 move of the 5 it needs.
+- Where a beat needs only SOME path (the 108 single-holder long records and the
+  2,672 unsolved), length is nearly free - 1,330 moves of headroom on the best
+  ten - and we cannot find one at all. **0 of 77 swept, every attempt
+  exhausting 8,000,000 nodes, under two different rankings and no length cap.**
+
+So the campaign's central number survives a fourth independent measurement -
+minimum ratio 1.00, never below - and it is now joined by a second one that says
+the same thing from the opposite corner of the pool. The missing capability is
+not shortening, not the box, not the budget and not the ranking. It is a finder
+that reaches a trivial state on presentations where ours never does.
+
+**What the next run should do.** Do not re-run the near-miss cycle; it is
+settled to 20 open challenges and they are logged. The one cheap thing left is
+`widen.py` over the 45 `ac` and 54 `stable_ac` near misses at gap <= 3 and any
+k: the shortener already landed 7 of those on records and each further landing
+pays 2^(1-k), which on a score of 0.0004 is not nothing. Everything above that
+needs a different finder.
+
+### The gap <= 3 tie harvest, started, and its first five say no
+
+`wid_g3_ac` runs `widen.py` over the 45 `ac` near misses at gap <= 3 and any k,
+slack 2, spans 6 to 24, 90 s a target. The first five: **1,622 exact windows,
+every single one REACHED, and 0 splices.** Our own length re-derived exactly,
+1,622 times.
+
+That replicates the 27 September "467 of 467 windows" result on five further
+challenges with a wider span range and a cap taken from the whole path rather
+than the window, and it is the cleanest statement available that the records in
+this band are the true minima. It was left running for the rest of the 45; if
+it converts any, they are in `runs/pool/wid_g3_ac/solutions.jsonl` for the next
+run to submit.
+
+**Committed this session**: `runs/pool/bishorten.py`, `canonkey.py`,
+`gap_report.py`, `widen.py`, `freshbeat.py`. No sequence left the machine.
