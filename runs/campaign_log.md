@@ -1679,11 +1679,17 @@ campaign's two previous statements of the same thing from a third direction:
 zero times.**
 
 **Standing.** Before: ac rank 28, 0.0003, 149 held; stable_ac rank 25, 0.0015,
-131 held. After: **ac rank 28, 0.0004, 156 held; stable_ac rank 25, 0.0026, 138
-held** (21:55Z). Rank 3 is memcon-chasing at 504.36 on ac and 535.62 on stable.
-**Submitted: 14 paths, two batches (4327 ac, 4328 stable_ac), platform
-verified {'ok': 7} each.** First submissions since 26 September, and the first
-time this campaign's score has risen rather than decayed.
+131 held. After, at the 2026-10-19T13:45Z snapshot: **ac rank 27, 0.0007, 161
+held; stable_ac rank 24, 0.0047, 142 held.** Both ranks up one, both scores
+roughly tripled, held counts +12 and +11. Rank 3 is memcon-chasing at 504.36 on
+ac and 535.62 on stable, so this changes nothing about the top of the board.
+
+**Submitted: 31 paths over six batches, every one platform-verified.**
+4327 (ac, 7), 4328 (stable_ac, 7), 4331 (ac, 2), 4332 (stable_ac, 8),
+4404 (ac, 3), 4405 (stable_ac, 4). All ties on records we did not hold.
+**These are the first submissions since 26 September and the first time this
+campaign's score has risen rather than decayed** - every previous session's
+entry records the score falling while the held counts stood still.
 
 ### The gap distribution nobody had measured
 
@@ -1993,19 +1999,165 @@ k: the shortener already landed 7 of those on records and each further landing
 pays 2^(1-k), which on a score of 0.0004 is not nothing. Everything above that
 needs a different finder.
 
-### The gap <= 3 tie harvest, started, and its first five say no
+### The ac-to-stable arbitrage, pursued properly, and the ratio that closes it
 
-`wid_g3_ac` runs `widen.py` over the 45 `ac` near misses at gap <= 3 and any k,
-slack 2, spans 6 to 24, 90 s a target. The first five: **1,622 exact windows,
-every single one REACHED, and 0 splices.** Our own length re-derived exactly,
-1,622 times.
+The earlier note that "0 of our 156 holds sits on one of those 288" understated
+the lead and was right for the wrong reason, so it was re-done from the top.
 
-That replicates the 27 September "467 of 467 windows" result on five further
-challenges with a wider span range and a cap taken from the whole path rather
-than the window, and it is the cleanest statement available that the records in
-this band are the true minima. It was left running for the rest of the 45; if
-it converts any, they are in `runs/pool/wid_g3_ac/solutions.jsonl` for the next
-run to submit.
+**The construction is exact, not assumed.** Over the 396 challenges solved on
+this machine, OUR stable length minus OUR ac length is **2 on 393 of them** (3
+on one, 4 on one, 285 on one - all three stale stable paths that the +2
+construction improves). Appending `Destabilize(1), Destabilize(0)` to any path
+that reaches (x, y) is always legal and the verifier confirms it.
+
+**So the criterion is far weaker than tying the ac record.** We need
+
+    L + 2 < sac_best,  i.e.  L <= sac_best - 3
+
+which on a challenge whose two records are 29 apart lets our ac path be 29 moves
+WORSE than the ac record and still take a full point on the stable board. And
+because our solver's floor is ratio 1.00, `L >= ac_best` always, so the set
+where this can EVER work is exactly `sac_best - ac_best >= 3`: **252 challenges
+at the current snapshot** (the 288 of twelve hours ago; records move).
+
+**252 full points is rank-5 sized** - rank 5 on stable_ac is 394.89. This is the
+largest single prize this campaign has identified, and it needs no ac beat at
+all.
+
+**It closes on the required ratio.** For each target, the ac path length we are
+allowed, divided by the ac record:
+
+| | |
+| :--- | ---: |
+| median required ratio | **1.014** |
+| maximum required ratio, over all 252 | **1.233** |
+| targets tolerating ratio >= 1.30 | **0** |
+| targets with `ac_best >= 46` | 250 of 252 |
+| targets with `ac_best >= 121` | 136 |
+
+So the arbitrage does not sidestep the wall, it relabels it: instead of beating
+an ac record it asks us to come within **1.4 percent** of one, on presentations
+whose records are 100 to 400, where the beam's median ratio is 1.76 and its find
+rate is about 2.5 percent. The most generous target in the whole set, ac-00590
+at ratio 1.23, has an ac record of 116 - in the band where we cannot find any
+path at all.
+
+**The two that ARE in reach were attacked with everything, and found nothing.**
+Only two of the 252 sit at an ac record our solvers reach, and both had been
+tried before at the records they carried then (34-35 and 47, now 27 and 40), so
+`skip_exact.txt` was stale for ac-03060: its record fell from 35 into the 23-30
+band, which carries slack 2 rather than 0, exactly the runbook's "a refresh
+refills the productive band". `runs/pool/stablearb.py` walked the cap on both:
+
+| target | need | caps walked | result |
+|---|---|---|---|
+| ac-03060, ac record 27 (k 1), stable 30 | ac <= 27 | size+2 to size+14 (24 to 36) | **no path at any cap** |
+| ac-01876, ac record 40 (k 3), stable 45 | ac <= 42 | size+2 to size+14 (31 to 43) | **no path at any cap** |
+
+**The node counts say which caps are proofs and which are not, and this is
+where I nearly recorded an invalid measurement.** On ac-03060 caps 24, 26 and 28
+terminated at 3,002, 22,971 and 133,911 nodes - orders of magnitude below any
+budget, so the box really is empty and no path that short exists through words
+that short. Caps 30 and above looked the same in the output and are not the same
+thing. Re-run at 10,000,000 nodes a side and `table_bits` 24 instead of 4,000,000
+and 23:
+
+| cap | bits 23, 4M/side | bits 24, 10M/side |
+|---:|---:|---:|
+| 30 | 6,775,585 nodes | **12,775,585 nodes** |
+| 32 | 6,806,867 nodes | **19,781,836 nodes** |
+
+**An exhausted box returns the same count whatever the budget.** These do not,
+so at least the smaller run was not exhausting anything: at 6.8M entries in a
+2^23 table the load factor is 0.81, and this search treats a hash match as
+"seen", so a saturated table silently SKIPS distinct states and can skip the
+solution. Cap 32 at 19,781,836 against a 20,000,000 total budget is simply
+budget-limited. So the honest statement is: **ac-03060 is proved to have no path
+at caps 24 to 28, is probably but not certainly empty at cap 30, and is untested
+at cap 32 and above.** It is a frontier, not a closed door, and the next session
+should resume it there rather than at the beginning. ac-01876 was budget-limited
+at every single cap from 31 to 43 and is untested throughout.
+
+### Did the long-record sweep use the weak key? It did, so it was re-run
+
+A fair challenge to the 0/108: `bestfirst.py` carries its own plain-hash visited
+set and never touches `canonkey`, so that sweep said nothing about the lossy key
+that solves 20 of 40 against plain's 15 at 0.069 of the nodes. Lossiness costs
+nothing for scoring, because a found path is replayed by our verifier and then by
+the official one, so if the lossy key reaches further it is strictly better here.
+
+Re-run on the same 108 challenges with the swap-plus-relator-inversion key,
+4,000,000 nodes, cap size + 8: **`mode 1: found 0/108`.**
+
+So the result survives the strongest finder available: the plain-hash uncapped
+bidirectional best-first finds 0 of 108, pure length-greedy finds 0 of 10 on the
+widest targets, and the lossy canonical key finds 0 of 108. Three different
+finders, three different visited sets, one capped and two not.
+
+### The gap <= 3 tie harvest, finished: 9 splices, 5 ac ties, 4 stable twins
+
+`wid_g3_ac` ran `widen.py` over all 48 `ac` near misses at gap <= 3 and any k,
+slack 2, spans 6 to 24, 90 s a target. **48 of 48 done, 9 splices, 7 paths
+improved, 5 of them landing exactly on an ac record**: ac-07348 39->37,
+ac-04278 36->35, ac-05414 27->26, ac-00679 27->26, ac-01059 23->22, plus
+ac-09759 35->33 and ac-01945 31->30 which stay over.
+
+The splices that paid were at **spans 12, 13 and 16** - routes of 11, 12 and 15
+moves, which no ball of radius 5 can see and which `shortcut.py`'s
+window-local-cap box at slack 2 would have searched in a tighter box than this
+one. So the exact between-states search IS worth running on this band; it was
+the first five targets that said no, not the method.
+
+**And the stable twin is free money the shortener runs were throwing away.**
+`runs/pool/stable_twin.py` appends `Destabilize(1), Destabilize(0)` to each
+improved ac path and checks it against the stable record. Four of the five ties
+carry a stable tie as well, and ac-07348's is on a record shared **8** ways
+against the ac record's 11, so it pays eight times more than the ac tie that
+produced it: sac-07348 39 (k 8), sac-00679 28 (k 11), sac-01059 24 (k 14),
+sac-05414 28 (k 15). A one-move ac improvement that is nearly worthless on its
+own board can be the better half of the trade on the other one. Any future
+shortener run should pipe its output through `stable_twin.py` as a matter of
+course.
+
+### The frontier, stated so the next session does not start from the beginning
+
+The claim is that the missing capability is a FINDER, not a shortener, a box or a
+budget. These are the measurements that support it:
+
+1. **Not a shortener.** The strongest shortener this campaign has had removed 801
+   moves from each board and landed on a record 14 times out of 512 paths, and
+   strictly below it 0 times. On the 48 gap <= 3 targets the exact
+   between-states search re-derived our own length in every reachable window
+   over thousands of windows.
+2. **Not the box.** Widening the slack from 2 to 4 on the same paths found
+   nothing new and pushed 33 more windows out of reach; the reach frontier in
+   span moved the wrong way, 15 to 16.
+3. **Not the budget, on the long-record band.** 108 challenges, three finders,
+   8M to 20M nodes each, 0 found. Every one consumed its whole budget without
+   the frontiers meeting once, with 1,330 moves of length headroom available.
+4. **Not the ranking or the visited set.** Plain hash, pure length-greedy, and
+   the lossy canonical key all return 0 of 108.
+
+And these parts are genuinely UNTESTED, and are where to resume:
+
+- **ac-03060 above cap 30.** Proved empty at caps 24-28; cap 30 is at a hash
+  load where states can be skipped, cap 32 is budget-limited at 19.8M of a 20M
+  budget, caps 34+ were never run. A 27-move path there is worth 0.5 on ac and
+  an outright **1.0** on stable. This is the single most valuable untested cell
+  in the pool and it needs MAXLEN raised with `table_bits` 25 and 30M+ nodes a
+  side, which is a memory decision rather than a run.
+- **ac-01876 at every cap.** Budget-limited from 31 to 43 throughout; nothing
+  about it is settled.
+- **The 252-challenge arbitrage at ac records 46-120** (114 challenges). The
+  required ratios there are 1.01 to 1.23 and our beam's find rate in that band
+  was measured at about 2.5 percent with a median ratio of 1.76 - but that was
+  measured with the beam, NOT with the lossy canonical key, which on records
+  31-45 halves the path length and cuts nodes 14.5-fold. Nobody has pointed the
+  canonical key at records 46-120 with the arbitrage threshold as the target.
+  That is the one combination this session built the parts for and did not run.
+- **The lossy canonical key on the unsolved pool.** 2,672 full points, and the
+  only prior measurement is 0 of 32 with the plain key in September.
 
 **Committed this session**: `runs/pool/bishorten.py`, `canonkey.py`,
-`gap_report.py`, `widen.py`, `freshbeat.py`. No sequence left the machine.
+`gap_report.py`, `widen.py`, `freshbeat.py`, `stablearb.py`, `stable_twin.py`.
+No sequence left the machine.
