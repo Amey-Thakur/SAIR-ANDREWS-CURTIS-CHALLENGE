@@ -106,6 +106,16 @@ def pick(count, rec_lo, rec_hi, max_k, unsolved, skip, arb=False):
     return rows[::step][:count], n
 
 
+def shard_of(rows, shard, nshards):
+    """One worker's slice. Taking every nth of a size-sorted list keeps each
+    shard spread evenly across presentation sizes, which `--skip` would not:
+    skip-based sharding interacts with the stratifier above and would hand
+    every worker the same challenges."""
+    if nshards <= 1:
+        return rows
+    return rows[shard::nshards]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--count", type=int, default=40)
@@ -122,10 +132,13 @@ def main():
                          ">= 3, where an ac path of sac_best - 3 or less is an "
                          "outright stable beat with no ac beat required")
     ap.add_argument("--skip", type=int, default=0)
+    ap.add_argument("--shard", type=int, default=0)
+    ap.add_argument("--nshards", type=int, default=1)
     ap.add_argument("--out", default="runs/pool/fresh")
     args = ap.parse_args()
     rows, pool_n = pick(args.count, args.rec_lo, args.rec_hi, args.max_k,
                         args.unsolved, args.skip, arb=args.arb)
+    rows = shard_of(rows, args.shard, args.nshards)
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     sol = open(out / "solutions.jsonl", "a", encoding="utf-8")
@@ -134,7 +147,9 @@ def main():
             f"{args.rec_lo}-{args.rec_hi}" if args.arb else
             "unsolved by anyone" if args.unsolved else
             f"k <= {args.max_k}, record {args.rec_lo}-{args.rec_hi}")
-    print(f"  freshbeat: {len(rows)} of {pool_n} challenges, {what}, "
+    tag = (f", shard {args.shard} of {args.nshards}"
+           if args.nshards > 1 else "")
+    print(f"  freshbeat: {len(rows)} of {pool_n} challenges, {what}{tag}, "
           f"budget {args.nodes:,}, modes {modes}", flush=True)
     canonkey.solve([(1, 2), (2, 1)], 8, 1000, 4)      # warm the compiler
 

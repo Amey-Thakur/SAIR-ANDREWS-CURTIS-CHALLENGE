@@ -200,6 +200,61 @@ A challenge is only settled when the EXACT search ran at that band's best slack
 (records 18-22 slack 4, 23-30 slack 2, 31-60 slack 0). Attempts by the ball search or
 at the wrong slack do not settle it. `runs/pool/skip_exact.txt` is built that way.
 
+## Two tests for whether a number is a measurement (added 19 Oct 2026)
+
+Both of these caught a wrong result in this campaign AFTER it had been written
+down and quoted back. They generalise past the ACC and cost nothing to apply.
+
+### 1. The two-budget subtraction test
+
+A bidirectional search that reports "no path inside the box" has either
+EXHAUSTED the box (a proof that no such path exists) or run out of budget (no
+information at all). The output looks identical. To tell them apart, run the
+same cap at two different node budgets and subtract the totals:
+
+| nodes per side | total reported | total minus the per-side budget |
+|---:|---:|---:|
+| 4,000,000 | 6,775,585 | 2,775,585 |
+| 9,000,000 | 11,775,585 | 2,775,585 |
+| 10,000,000 | 12,775,585 | 2,775,585 |
+
+**An exhausted box returns the same total whatever the budget. If the totals
+differ by the budget increment, one side is saturating and "none" is not a
+proof.** On ac-03060 only caps 24, 26 and 28 were real proofs (3,002 / 22,971 /
+133,911 nodes, orders of magnitude below any budget); caps 30 to 38 all showed
+`budget + 2.8M` and prove nothing. A first attempt to explain the discrepancy by
+hash-table load was wrong, and the third budget is what showed it: 64-bit hash
+collisions at 12M states are about 1e-5 and were never the cause.
+
+### 2. Any number equal to a buffer size is a bug until proven otherwise
+
+`canonkey` returned a path of length exactly **4096**, which was the size of its
+path-recovery buffer. The recovery loop had no bound and was writing past the
+end; the true length was 5,921. The same unguarded loop and the same 4,096
+buffer are still in `jit_engine.search`, so any long path it has ever returned
+is suspect.
+
+The sibling of this: a scratch buffer written BEFORE a bound is checked. `_apply`
+writes the concatenation of both relators, up to `2 * cap`, into `o0` and only
+then is `na > cap` tested, so sizing those buffers at `MAXLEN` corrupts the heap
+whenever `2 * cap > MAXLEN`. It aborts the process with no traceback and no
+stderr, which does not look like a bug at all. **Size move scratch buffers at
+`2 * cap + 8`, never at `MAXLEN`.** This silently invalidated a measurement on
+25 of 40 challenges before it was found; the re-run changed every figure and no
+conclusion, which is the good case, and the only way to know which case you are
+in is to re-run.
+
+### 3. A point estimate of zero is not a ceiling of zero
+
+0 finds in n challenges bounds the rate at `1 - 0.05 ** (1/n)` at 95 percent:
+8.94 percent at n=32, **2.95 percent at n=100**, 0.11 percent at n=2672. Over
+the 2,672-challenge unsolved pool, where a find pays 1.0 on BOTH boards, those
+bounds are worth 478, 158 and 6 points. **A sample of a hundred cannot
+distinguish "nothing there" from "a hundred points there."** Compute the bound
+before calling a seam closed, and sample stratified: a sampler that takes the
+smallest `count` presentations measures the easy tail and reports it as a find
+rate.
+
 ## Refresh the pool before every campaign of work
 
 `runs/pool/pool.jsonl` goes stale fast and a stale pool wastes the whole run.
