@@ -2308,27 +2308,49 @@ earlier zero sweeps on long records. The unsolved pool is hard for its own
 reason, and its median size of 24 - SMALLER than the solved median of 30 - said
 as much before the run.
 
-**But 0 of 100 does not close the economics, and saying so is the point.** The
-95 percent upper bound on the find rate from 0 of 100 is **2.95 percent**:
+**0 of 100 did not close the economics, so the whole pool was run.** The 95
+percent upper bound on a rate from 0 of n is `1 - 0.05 ** (1/n)`:
 
 | 0 finds in | 95% upper bound | implied finds over 2,672 | worth |
 |---:|---:|---:|---:|
-| 32 | 8.94% | 239 | 478 points |
-| 100 | **2.95%** | **79** | **158 points** |
-| 2,672 | 0.11% | 3 | 6 points |
+| 32 (September, plain key) | 8.94% | 239 | 478 points |
+| 100 (the sample above) | 2.95% | 79 | 158 points |
 
 A rate anywhere under three percent is invisible in a hundred samples and would
-still be worth a hundred-odd points over the pool - which is rank 6 to 8
-territory, not a rounding error. **So this cell is BOUNDED, not closed**, and
-the only measurement that closes it is the whole pool: 2,672 challenges at 4M
-nodes, one mode, about **12.6 CPU-hours**, which on this machine is four to six
-hours wall-clock at two or three workers. That drives the bound to 0.11 percent.
+still have been worth a hundred-odd points - rank 6 to 8 territory, not a
+rounding error. So the sample bounded the question rather than answering it, and
+the full sweep was the only thing that could answer it.
 
-**That is the single best remaining bet in the campaign and it is cheap**, not
-because the rate is likely to be high but because it is the only place where the
-payoff per find is 2.0 instead of 2^(1-k), and the only open question is one
-that compute alone settles. Everything else on the list below needs a solver
-whose output ratio is near 1, which is a build.
+### The census: 0 of 2,672
+
+Three disjoint, size-balanced shards (891 / 891 / 890, verified to union back to
+exactly 2,672), lossy canonical key, 4,000,000 nodes, cap size + 8, about six
+hours wall-clock on three workers:
+
+    shard 0: mode 1: found 0/891
+    shard 1: mode 1: found 0/891
+    shard 2: mode 1: found 0/890
+    stderr: 0 bytes on all three.  Solutions written: 0.
+
+Size coverage spans every value from 13 to 40 in proportion to the pool
+(3 at size 13, 206 at 25, 28 at 39, 1 at 40).
+
+**This is a census, not a sample, and that is what makes it final.** There is no
+unsampled remainder left to extrapolate into, so the "up to 158 points" ceiling
+is not reduced, it is **gone**: every challenge nobody has solved has now been
+attempted by the best finder this campaign has, and none of them yielded. The
+binomial bound was the right instrument while a remainder existed and is simply
+the wrong question once the population is exhausted.
+
+The one residual axis is budget, and it was tested separately: 0 of 25
+stratified at 10,000,000 nodes, 2.5 times the census budget. Together with
+September's 0 of 32 at 2M with the plain key, the unsolved pool has now returned
+zero at three budgets and with two visited sets.
+
+**The 2,672 unsolved challenges are the AC-hard core, and their median
+presentation size of 24 - SMALLER than the solved median of 30 - was the clue
+that they are hard for a reason size does not capture.** No team holding 5,500
+challenges has solved one either.
 
 ### The frontier, stated so the next session does not start from the beginning
 
@@ -2363,15 +2385,18 @@ what follows is what is left after them.
 - **The arbitrage is closed on the ratio**, not on reach: 2.2x minimum over 50
   finds against a 1.00-1.07 requirement. Re-testing it needs a solver whose
   output ratio is near 1, which is the same thing the whole campaign needs.
-- **The unsolved pool is now sampled, not untested: 0 of 100 stratified at 4M
-  and 0 of 25 at 10M, both keys.** What is left is only the bound - under 3
-  percent, which over 2,672 challenges is still up to 158 points. **Finishing
-  the sweep is the one remaining job that compute alone settles**: 12.6
-  CPU-hours at 4M nodes single-mode, four to six hours wall-clock at two or
-  three workers, and it drives the bound to 0.11 percent. Run it with
-  `freshbeat --unsolved --count 2672 --nodes 4000000 --slack 8 --depth 3
-  --modes 1`, in two or three shards via `--skip`, and pipe every find through
-  `stable_twin.py` before submitting - each one pays 1.0 on BOTH boards.
+- **The unsolved pool is DONE, as a census: 0 of 2,672 at 4M nodes, plus 0 of
+  25 at 10M and September's 0 of 32 at 2M.** Do not re-run it. The only thing
+  that would make it worth revisiting is a finder of a different class, and then
+  it is the first place to point one, because a find there pays 1.0 on both
+  boards instead of 2^(1-k).
+
+**With that, every seam this campaign identified has been measured rather than
+inferred, and none of them pays. There is no cheap experiment left.** What
+remains is a build: a solver whose output ratio is near 1 rather than 2 to 9, or
+one that reaches a trivial state on presentations where ours never does. Both
+are hardware-and-design decisions, not a run, and that is the campaign's
+answer.
 - **The long-record band re-run with the lossy key**: 0 of 108 was measured at
   4M nodes with cap size + 8. The arbitrage band's finds mostly came in under
   2M nodes, so the budget was probably not the limit, but a cap walk on the
