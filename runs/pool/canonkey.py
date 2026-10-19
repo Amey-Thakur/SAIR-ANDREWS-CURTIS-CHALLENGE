@@ -250,17 +250,32 @@ def search(r0, n0, r1, n1, cap, max_nodes, table_bits, mode):
     nbucket = 2 * cap + 8
     head = np.full(nbucket, -1, dtype=np.int32)
 
-    o0 = np.zeros(MAXLEN, dtype=np.int8)
-    o1 = np.zeros(MAXLEN, dtype=np.int8)
-    buf = np.zeros(MAXLEN, dtype=np.int8)
-    tmp = np.zeros(MAXLEN + 4, dtype=np.int8)
-    ca = np.zeros(8 * (NSYM + 2), dtype=np.int8)
-    cb = np.zeros(8 * (NSYM + 2), dtype=np.int8)
-    t1 = np.zeros(MAXLEN, dtype=np.int8)
-    t2 = np.zeros(MAXLEN, dtype=np.int8)
-    t3 = np.zeros(MAXLEN, dtype=np.int8)
-    f = np.zeros(2 * MAXLEN + 4, dtype=np.int32)
-    path = np.zeros(4096, dtype=np.int8)
+    # The scratch buffers must hold a result BEFORE the cap is checked, and
+    # move 2 writes the concatenation of both relators, so up to 2 * cap. The
+    # per-relator test `na > cap` happens after the write, so sizing these at
+    # MAXLEN overflows the heap whenever 2 * cap > MAXLEN - silently, as a
+    # process abort with no Python traceback.
+    S = 2 * cap + 8
+    o0 = np.zeros(S, dtype=np.int8)
+    o1 = np.zeros(S, dtype=np.int8)
+    buf = np.zeros(S, dtype=np.int8)
+    tmp = np.zeros(S + 4, dtype=np.int8)
+    # ca and cb serve two jobs: the canonical word for modes 1 and 2, which is
+    # as long as a relator, and a uint64 view of NSYM slots for modes 3 and 4.
+    # Size for whichever is larger. t1..t3 hold one word, f is Booth's 2n.
+    C = max(8 * (NSYM + 2), cap + 8)
+    ca = np.zeros(C, dtype=np.int8)
+    cb = np.zeros(C, dtype=np.int8)
+    t1 = np.zeros(cap + 8, dtype=np.int8)
+    t2 = np.zeros(cap + 8, dtype=np.int8)
+    t3 = np.zeros(cap + 8, dtype=np.int8)
+    f = np.zeros(2 * cap + 8, dtype=np.int32)
+    # a canonical key collapses orbits and can return very long paths: the
+    # first find on ac-04052 came back at exactly 4096, the old buffer size,
+    # which is the signature of an unguarded recovery loop rather than a
+    # length. PLIM bounds it and the loop below refuses to overrun it.
+    PLIM = 1 << 16
+    path = np.zeros(PLIM, dtype=np.int8)
 
     for i in range(n0):
         w0[i] = r0[i]
@@ -297,10 +312,18 @@ def search(r0, n0, r1, n1, cap, max_nodes, table_bits, mode):
                 path[m] = mid
                 m += 1
                 node = cur
+                over = False
                 while parent[node] != -1:
+                    if m >= PLIM:
+                        over = True
+                        break
                     path[m] = pmove[node]
                     m += 1
                     node = parent[node]
+                if over:
+                    # the path does not fit; report it as unfound rather than
+                    # returning a truncated sequence the verifier would reject
+                    return False, -1, path, count
                 for i in range(m // 2):
                     t = path[i]
                     path[i] = path[m - 1 - i]
@@ -338,6 +361,9 @@ def search(r0, n0, r1, n1, cap, max_nodes, table_bits, mode):
 
 
 def solve(relators, cap, max_nodes, mode, table_bits=24):
+    # the stored states are strided by MAXLEN and hold up to cap per relator
+    if cap > MAXLEN:
+        raise ValueError(f"cap {cap} needs ACC_MAXLEN >= {cap}, have {MAXLEN}")
     r0 = np.array(relators[0], dtype=np.int8)
     r1 = np.array(relators[1], dtype=np.int8)
     found, m, path, nodes = search(r0, len(r0), r1, len(r1), cap,

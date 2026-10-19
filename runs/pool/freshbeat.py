@@ -38,6 +38,7 @@ sys.path.insert(0, str(REPO / "runs" / "pool"))
 
 import canonkey                                                  # noqa: E402
 from bishorten import shorten as bishort                         # noqa: E402
+from src.ac.moves import Destabilize                             # noqa: E402
 from src.ac.presentation import Presentation                     # noqa: E402
 from src.ac.verify import verify                                 # noqa: E402
 from src.search.campaign import move_to_json                     # noqa: E402
@@ -45,12 +46,15 @@ from src.search.engine import (FINISH_AC, FINISH_STABLE,         # noqa: E402
                                replay, to_move)
 
 
-def pick(count, rec_lo, rec_hi, max_k, unsolved, skip):
+def pick(count, rec_lo, rec_hi, max_k, unsolved, skip, arb=False):
     """Targets, widest tolerance first.
 
     `unsolved` takes the challenges nobody has solved, where ANY verified path
-    is worth a full point. Otherwise it takes single-holder challenges inside
-    a record band, where any path under the record is worth a full point."""
+    is worth a full point. `arb` takes the cross-problem arbitrage set, where
+    `sac_best - ac_best >= 3` and so an ac path of `sac_best - 3` or less gives
+    a stable path of `ac + 2` that BEATS the stable record outright - no ac beat
+    required. Otherwise it takes single-holder challenges inside a record band.
+    """
     rows = []
     for line in open(REPO / "runs/pool/pool.jsonl", encoding="utf-8"):
         r = json.loads(line)
@@ -61,16 +65,25 @@ def pick(count, rec_lo, rec_hi, max_k, unsolved, skip):
             continue
         if b is None or k is None:
             continue
+        if arb:
+            if r["sac_best"] is None or r["sac_best"] - b < 3:
+                continue
+            if rec_lo <= b <= rec_hi:
+                rows.append(r)
+            continue
         if k <= max_k and rec_lo <= b <= rec_hi:
             rows.append(r)
     if unsolved:
         # smallest first: size is the only lever we have on an unsolved case
         rows.sort(key=lambda r: sum(len(x) for x in r["relators"]))
+    elif arb:
+        # most generous first: the biggest allowance over the ac record
+        rows.sort(key=lambda r: -((r["sac_best"] - 3) / r["ac_best"]))
     else:
         rows.sort(key=lambda r: -r["ac_best"])
     n = len(rows)
     rows = rows[skip:]
-    step = max(1, len(rows) // count) if not unsolved else 1
+    step = 1 if (unsolved or arb) else max(1, len(rows) // count)
     return rows[::step][:count], n
 
 
@@ -85,16 +98,22 @@ def main():
     ap.add_argument("--depth", type=int, default=5)
     ap.add_argument("--modes", default="4,0")
     ap.add_argument("--unsolved", action="store_true")
+    ap.add_argument("--arb", action="store_true",
+                    help="the cross-problem arbitrage set: sac_best - ac_best "
+                         ">= 3, where an ac path of sac_best - 3 or less is an "
+                         "outright stable beat with no ac beat required")
     ap.add_argument("--skip", type=int, default=0)
     ap.add_argument("--out", default="runs/pool/fresh")
     args = ap.parse_args()
     rows, pool_n = pick(args.count, args.rec_lo, args.rec_hi, args.max_k,
-                        args.unsolved, args.skip)
+                        args.unsolved, args.skip, arb=args.arb)
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     sol = open(out / "solutions.jsonl", "a", encoding="utf-8")
     modes = [int(x) for x in args.modes.split(",")]
-    what = ("unsolved by anyone" if args.unsolved else
+    what = ("the arbitrage set, sac_best - ac_best >= 3, ac records "
+            f"{args.rec_lo}-{args.rec_hi}" if args.arb else
+            "unsolved by anyone" if args.unsolved else
             f"k <= {args.max_k}, record {args.rec_lo}-{args.rec_hi}")
     print(f"  freshbeat: {len(rows)} of {pool_n} challenges, {what}, "
           f"budget {args.nodes:,}, modes {modes}", flush=True)
@@ -124,32 +143,52 @@ def main():
             total = len(ac)
             stat[mode]["found"] += 1
             stat[mode]["ratios"].append(total / rec)
-            mark = "BEAT" if total < rec else ""
+            sb = r["sac_best"]
+            # the arbitrage threshold: our stable path is ac + 2, so an ac path
+            # of sac_best - 3 or less takes the stable point outright, with no
+            # ac beat at all
+            arb_need = (sb - 3) if sb is not None else None
+            mark = "   AC BEAT" if total < rec else (
+                "   AC TIE" if total == rec else "")
+            if arb_need is not None and total <= arb_need:
+                mark += "   STABLE BEAT"
+            req = f", required <= {arb_need} (ratio {arb_need / rec:.2f})" \
+                if arb_need is not None and rec < 10 ** 9 else ""
             print(f"      mode {mode}: found {raw} -> shortened {len(short)} "
                   f"-> with finish {total} vs record {rec} "
-                  f"(ratio {total / rec:.2f}), {nodes:,} nodes, "
-                  f"{dt:.0f}s + shorten {passes} passes {mark}", flush=True)
-            if total >= rec:
-                continue
-            stat[mode]["beat"] += 1
+                  f"(ratio {total / rec:.2f}){req}, {nodes:,} nodes, "
+                  f"{dt:.0f}s + shorten {passes} passes{mark}", flush=True)
+
             moves = [to_move(m) for m in ac]
             chk = verify(Presentation(2, tuple(rels)), moves, stable=False)
             if not chk:
                 print(f"      VERIFIER REJECTED: {chk.reason}", flush=True)
                 continue
-            sol.write(json.dumps(
-                {"id": r["id"], "problem": "ac", "length": total,
-                 "moves": [move_to_json(m) for m in moves],
-                 "record_at_find": rec, "mode": mode}) + "\n")
-            stable = [to_move(m) for m in short] + FINISH_STABLE[end]
-            chk = verify(Presentation(2, tuple(rels)), stable, stable=True)
-            if chk and len(stable) < (r["sac_best"] or 10 ** 9):
+            wrote = False
+            if total <= rec:
+                stat[mode]["beat"] += total < rec
                 sol.write(json.dumps(
-                    {"id": r["id"], "problem": "stable_ac",
-                     "length": len(stable),
-                     "moves": [move_to_json(m) for m in stable],
-                     "record_at_find": r["sac_best"], "mode": mode}) + "\n")
-            sol.flush()
+                    {"id": r["id"], "problem": "ac", "length": total,
+                     "moves": [move_to_json(m) for m in moves],
+                     "record_at_find": rec, "mode": mode}) + "\n")
+                wrote = True
+            # the stable twin, both constructions, shortest that scores
+            cands = [[to_move(m) for m in short] + FINISH_STABLE[end],
+                     moves + [Destabilize(1), Destabilize(0)]]
+            cands = [c for c in cands
+                     if verify(Presentation(2, tuple(rels)), c, stable=True)]
+            if cands and sb is not None:
+                st = min(cands, key=len)
+                if len(st) <= sb:
+                    stat[mode]["beat"] += len(st) < sb
+                    sol.write(json.dumps(
+                        {"id": r["id"], "problem": "stable_ac",
+                         "length": len(st),
+                         "moves": [move_to_json(m) for m in st],
+                         "record_at_find": sb, "mode": mode}) + "\n")
+                    wrote = True
+            if wrote:
+                sol.flush()
     sol.close()
     print()
     for mode in modes:

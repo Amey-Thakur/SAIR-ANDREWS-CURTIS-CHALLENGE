@@ -2068,15 +2068,60 @@ and 23:
 | 32 | 6,806,867 nodes | **19,781,836 nodes** |
 
 **An exhausted box returns the same count whatever the budget.** These do not,
-so at least the smaller run was not exhausting anything: at 6.8M entries in a
-2^23 table the load factor is 0.81, and this search treats a hash match as
-"seen", so a saturated table silently SKIPS distinct states and can skip the
-solution. Cap 32 at 19,781,836 against a 20,000,000 total budget is simply
-budget-limited. So the honest statement is: **ac-03060 is proved to have no path
-at caps 24 to 28, is probably but not certainly empty at cap 30, and is untested
-at cap 32 and above.** It is a frontier, not a closed door, and the next session
-should resume it there rather than at the beginning. ac-01876 was budget-limited
-at every single cap from 31 to 43 and is untested throughout.
+so the smaller run was not exhausting anything.
+
+**I first attributed that to hash-table load and I was wrong.** The correction
+came from a third budget, and it gives the campaign a reusable test. Cap 30 on
+ac-03060, same challenge, same cap, three budgets:
+
+| nodes per side | total reported | total minus the per-side budget |
+|---:|---:|---:|
+| 4,000,000 | 6,775,585 | **2,775,585** |
+| 9,000,000 | 11,775,585 | **2,775,585** |
+| 10,000,000 | 12,775,585 | **2,775,585** |
+
+**The remainder is identical to the node.** So the mechanism is not a saturated
+table skipping states - it is that ONE SIDE consumes its entire budget while
+the other converges at 2,775,585 nodes, and the reported total is
+`budget + constant`. Hash collisions at 64 bits are negligible at these counts
+(12M squared over 2^64 is about 1e-5); the table was never the problem.
+
+**The test, for reuse: run the same cap at two budgets and subtract. If the
+totals differ by exactly the budget increment, the search is budget-limited and
+"no path inside the box" is NOT a proof of emptiness.** The 27 September entry
+saw this signature once (6,835,153 and 10,835,153 differing by exactly
+4,000,000) without generalising it; it is a general diagnostic and it applies to
+every "none" this campaign has recorded from a bidirectional search.
+
+Applying it: caps 30, 32 and 34 all show `9,000,000 + ~2.8M`, so **cap 30 is not
+"probably empty" as I wrote - it is budget-limited exactly like the rest.** The
+honest statement is that **ac-03060 has no path at caps 24, 26 and 28 and is
+untested at every cap above that**, and the same holds for ac-01876 at every cap
+from 31 to 43.
+
+| ac-03060, 9M nodes/side, MAXLEN 40, bits 24 | result |
+|---|---|
+| cap 24, 26, 28 | **proved empty**, 3,002 / 22,971 / 133,911 nodes |
+| cap 30 | none, 11,775,585 nodes - budget-limited |
+| cap 32 | none, 11,806,867 - budget-limited |
+| cap 34 | none, 11,823,825 - budget-limited |
+| cap 36 | none, 15,918,322 - budget-limited |
+| cap 38 | none, 14,161,071 - budget-limited |
+
+**`table_bits` 25 is a net loss on this machine, and that is the memory
+decision.** The tables are `(8 + 4) * 2 * 2^bits` bytes: 384 MB at bits 24 and
+**768 MB at bits 25**. Within a 2.2 GB working set that drops the affordable
+budget from 10.7M to 8.4M nodes a side at MAXLEN 40. Since the binding
+constraint is nodes and not collisions, bits 24 with the largest node budget
+that fits is strictly better, which is what was run.
+
+**And the target devalued itself while the run was going.** ac-03060's records
+moved from ac 27 (k 1) / stable 30 (k 3) to **ac 25 (k 2) / stable 27 (k 2)**
+within the session. `sac_best - ac_best` is now 2, so it has dropped OUT of the
+arbitrage set altogether and the threshold is now 24, which needs an ac beat
+after all. The single most valuable untested cell in the pool was taken off the
+table by the field in a few hours. That is the "records only improve" rule
+operating at the pace that actually matters here.
 
 ### Did the long-record sweep use the weak key? It did, so it was re-run
 
@@ -2119,6 +2164,115 @@ own board can be the better half of the trade on the other one. Any future
 shortener run should pipe its output through `stable_twin.py` as a matter of
 course.
 
+### A heap overflow in canonkey, and which of its measurements survive
+
+Pointing the lossy key at ac records 46-120 killed the process instantly: no
+traceback, no stderr, exit without output. That is not a resource limit, it is
+a corrupt heap, and the cause is a buffer the move code writes BEFORE the cap is
+checked.
+
+`_apply` for move 2 writes the concatenation of both relators - up to `2 * cap`
+letters - into the scratch buffer `o0`, and only afterwards does the search test
+`na > cap` and discard it. `canonkey.search` sized those scratch buffers at
+`MAXLEN`, inherited from `jit_engine.search`, so **any run with `2 * cap >
+MAXLEN` was writing past the end of the heap allocation.** Fixed by sizing them
+`2 * cap + 8`, which is what `bishorten` already did.
+
+**Which measurements this invalidates, checked rather than assumed:**
+
+| run | cap | max `2 * cap` | old buffer | verdict |
+|---|---|---:|---:|---|
+| `--check`, 40 ms1190 | size + 6 | 46 | 64 | **safe** |
+| `--bench 400`, ms1190 | size + 6 | 46 | 64 | **safe** |
+| `--pool`, records 31-45 | size + 6 | **84** | 64 | **UNSAFE on 25 of 40** |
+
+So the benchmark table - plain 358 of 400, swap 379, swap+letters 379,
+swap+inv 337, rotation 0 - stands, and with it the lossless-key reach gain and
+the rotation-collapse mechanism. **The pool-band table did not**: 15/16/16/20
+solved, nodes x0.069, length x0.504 were computed with a live overflow on the
+majority of that sample, and that is the table this session quoted most and
+built a whole cell of work on.
+
+**Re-run with the fix, and every conclusion survives while every figure moves:**
+
+| visited key | solved of 40 | common nodes | common length |
+|---|---:|---:|---:|
+| plain | **13** (was 15) | 674,554 | 921.8 |
+| swap (lossless) | **17** (was 16) | 345,454, **x0.512** | 838.4, x0.910 |
+| swap + letters, 16 (lossless) | **17** (was 16) | 250,335, **x0.371** | 779.2, x0.845 |
+| swap + relator inversion (lossy) | **23** (was 20) | 53,852, **x0.080** | 597.9, **x0.649** |
+| and cyclic rotation | 0 | - | - |
+
+The direction is unchanged and the effect is slightly larger than the corrupt
+run reported: the lossless key cuts nodes to a third and shortens paths, the
+lossy key cuts nodes to a twelfth and solves 23 of 40 against the plain key's
+13, and rotation collapse is still fatal. **A bug that perturbs the numbers
+without reversing the finding is the good case, and the only way to know which
+case you are in is to re-run it.**
+
+A second bug surfaced the moment the first was fixed: the path-recovery loop
+wrote into a 4,096-entry buffer with no bound, and the first find came back at
+exactly 4,096 - a buffer size masquerading as a length. Bounded at 65,536 with
+an explicit refusal, and the true length was **5,921**. The same unguarded loop
+and the same 4,096 buffer are in `jit_engine.search`, which is older committed
+campaign code; it has not been touched, but any long path it ever returned is
+suspect for the same reason.
+
+**The lesson for the next session is the same one twice: a number that equals a
+buffer size, or that moves with the budget, is not a measurement.** Both were
+caught by arithmetic on the output rather than by reading the code.
+
+### Cell 2: the lossy key DOES reach the arbitrage band, at 8 times the ratio
+
+With both bugs fixed, the lossy canonical key was pointed at the 59 arbitrage
+challenges at ac records 46-120 - `sac_best - ac_best >= 3`, so an ac path of
+`sac_best - 3` takes the stable point outright with no ac beat needed - at 4M
+nodes, with the plain key as a control.
+
+The first target tells the story that the rest confirms:
+
+    ac-04052, ac record 100, stable record 110, required ac <= 107 (ratio 1.07)
+      lossy key: FOUND at 1,515,242 nodes, raw length 5,921
+      bidirectional shortener: 5,921 -> 837, an 86 percent reduction
+      final 839 against a requirement of 107: ratio 8.39
+
+**The full sweep, all 59 targets, lossy key against the plain key as control
+at the same 4,000,000-node budget:**
+
+| visited key | tried | found | find rate | median ratio achieved | median required | SCORED |
+|---|---:|---:|---:|---:|---:|---:|
+| plain (control) | 59 | 13 | **22%** | 4.30 | 1.00 | **0** |
+| swap + relator inversion (lossy) | 59 | **37** | **63%** | 4.90 | 1.00 | **0** |
+
+**The capability gain is real and it is large.** 63 percent against 22 percent
+on the same targets at the same budget, so the key nearly triples the find rate
+in a band the campaign had written off at about 2.5 percent - and that 2.5
+percent was measured with the beam, which was simply the wrong tool. Three
+earlier sweeps that reported nothing on long records (uncapped bidirectional
+best-first, pure length-greedy, the plain key) were all measuring a weaker
+finder than we now have. The shortener compounds it: it took ac-04052 from 5,921
+moves to 837, an **86 percent** reduction against the 37 percent it managed on
+ac-09331.
+
+**And the arbitrage still pays nothing, on measurement rather than inference.**
+
+    achieved / required ratio, over all 50 finds across both keys:
+      plain key:  min 2.2x   median 4.3x   max 7.2x
+      lossy key:  min 2.4x   median 4.9x   max 8.9x
+
+**The closest single attempt out of 59 challenges and two visited sets was still
+2.2 times longer than the threshold.** The arbitrage needs 1.00 to 1.07 here.
+Nothing on the ratio axis is within reach of that: it is not a near miss that a
+better shortener closes, it is a factor of two to nine. Zero scoring paths were
+produced and nothing was submitted from this cell.
+
+**So the ratio wall is the campaign's single binding constraint, now measured
+from four independent directions**: the shortener stops exactly on records and
+never below (14 of 512), the beam's 150-solve minimum is 1.00, the arbitrage's
+required ratio tops out at 1.233 while our floor in that band is 2.2, and the
+long-record band cannot be reached at all. Improving the FINDER moved the find
+rate from 22 to 63 percent and moved the ratio not at all.
+
 ### The frontier, stated so the next session does not start from the beginning
 
 The claim is that the missing capability is a FINDER, not a shortener, a box or a
@@ -2140,23 +2294,32 @@ budget. These are the measurements that support it:
 
 And these parts are genuinely UNTESTED, and are where to resume:
 
-- **ac-03060 above cap 30.** Proved empty at caps 24-28; cap 30 is at a hash
-  load where states can be skipped, cap 32 is budget-limited at 19.8M of a 20M
-  budget, caps 34+ were never run. A 27-move path there is worth 0.5 on ac and
-  an outright **1.0** on stable. This is the single most valuable untested cell
-  in the pool and it needs MAXLEN raised with `table_bits` 25 and 30M+ nodes a
-  side, which is a memory decision rather than a run.
-- **ac-01876 at every cap.** Budget-limited from 31 to 43 throughout; nothing
-  about it is settled.
-- **The 252-challenge arbitrage at ac records 46-120** (114 challenges). The
-  required ratios there are 1.01 to 1.23 and our beam's find rate in that band
-  was measured at about 2.5 percent with a median ratio of 1.76 - but that was
-  measured with the beam, NOT with the lossy canonical key, which on records
-  31-45 halves the path length and cuts nodes 14.5-fold. Nobody has pointed the
-  canonical key at records 46-120 with the arbitrage threshold as the target.
-  That is the one combination this session built the parts for and did not run.
-- **The lossy canonical key on the unsolved pool.** 2,672 full points, and the
-  only prior measurement is 0 of 32 with the plain key in September.
+**Both cells named here last round have now been run and both closed**, so
+what follows is what is left after them.
+
+- **ac-03060 is closed as a target** and not because it was proved empty: its
+  records moved to ac 25 / stable 27 mid-session, which dropped it out of the
+  arbitrage set. Caps 30 to 38 were all budget-limited, so the mathematics is
+  still open there, but the prize is gone.
+- **ac-01876**: budget-limited at every cap from 31 to 43, nothing settled, and
+  still in the arbitrage set. Its threshold is ac <= 42 against a record of 40.
+- **The arbitrage is closed on the ratio**, not on reach: 2.2x minimum over 50
+  finds against a 1.00-1.07 requirement. Re-testing it needs a solver whose
+  output ratio is near 1, which is the same thing the whole campaign needs.
+- **Genuinely untested still: the lossy canonical key on the 2,672 unsolved
+  challenges.** 2,672 full points, where length does not matter at all - and
+  that is the one place a ratio of 4.9 is irrelevant. The only prior measurement
+  is 0 of 32 with the PLAIN key in September, and the plain key has just been
+  shown to find 22 percent where the lossy key finds 63 percent on comparable
+  hard presentations. **This is now the single most valuable untested cell, and
+  unlike everything else on this list it does not need the ratio to improve.**
+  The caution is that the unsolved pool's median size is 24, smaller than the
+  solved median, so it may be hard for a different reason - but that has never
+  been tested with this finder.
+- **The long-record band re-run with the lossy key**: 0 of 108 was measured at
+  4M nodes with cap size + 8. The arbitrage band's finds mostly came in under
+  2M nodes, so the budget was probably not the limit, but a cap walk on the
+  canonical key has not been tried there.
 
 **Committed this session**: `runs/pool/bishorten.py`, `canonkey.py`,
 `gap_report.py`, `widen.py`, `freshbeat.py`, `stablearb.py`, `stable_twin.py`.
