@@ -85,10 +85,12 @@ def main():
     with (out / "solutions.jsonl").open("a", encoding="utf-8") as fh:
         for cid, (L, moves) in sorted(best.items()):
             row = pool.get(cid)
-            if not row or row["sac_best"] is None:
+            if not row:
                 continue
             sb = row["sac_best"]
-            if L + 2 > sb:
+            # sb is None when nobody has solved the stable problem either, and
+            # then ANY verified path is a full point, whatever its length
+            if sb is not None and L + 2 > sb:
                 print(f"  ac-{cid}: ac {L} -> stable {L + 2}, stable record "
                       f"{sb}; {L + 2 - sb} over, nothing to send")
                 continue
@@ -99,11 +101,14 @@ def main():
             if not chk:
                 print(f"  ac-{cid}: VERIFIER REJECTED the twin: {chk.reason}")
                 continue
-            kind = "BEATS" if L + 2 < sb else "ties"
-            beats += L + 2 < sb
-            ties += L + 2 == sb
-            print(f"  ac-{cid}: ac {L} -> stable {len(stable)}, {kind} the "
-                  f"stable record {sb} (k {row['sac_k']})")
+            kind = ("takes an UNSOLVED challenge" if sb is None else
+                    "BEATS" if L + 2 < sb else "ties")
+            beats += sb is None or L + 2 < sb
+            ties += sb is not None and L + 2 == sb
+            where = ("no stable record exists" if sb is None else
+                     f"the stable record {sb} (k {row['sac_k']})")
+            print(f"  ac-{cid}: ac {L} -> stable {len(stable)}, {kind}, "
+                  f"{where}")
             fh.write(json.dumps(
                 {"id": cid, "problem": "stable_ac", "length": len(stable),
                  "moves": [move_to_json(m) for m in stable],

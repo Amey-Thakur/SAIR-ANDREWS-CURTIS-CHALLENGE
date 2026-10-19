@@ -2273,6 +2273,63 @@ required ratio tops out at 1.233 while our floor in that band is 2.2, and the
 long-record band cannot be reached at all. Improving the FINDER moved the find
 rate from 22 to 63 percent and moved the ratio not at all.
 
+### Cell 3: the lossy key on the 2,672 unsolved challenges - zero, and the bound is the result
+
+The last cell where the ratio wall does not apply. Nobody holds a record on any
+of these, so **any verified path is a full point**, and because all 2,672 are
+unsolved on BOTH boards a single find is worth **1.0 twice** via the `ac + 2`
+destabilisation. Against a score of 0.0007 that is four orders of magnitude, and
+it was the only thing left that could move the RANK rather than the third
+decimal.
+
+**Two safety steps first.** The unbounded path recovery into a 4,096-entry
+buffer lives in `jit_engine.search`, which is NOT on this path - `freshbeat`
+calls `canonkey.solve`, and `bishorten` imports only `_apply` and `_hash` - and
+`canonkey`'s own recovery is now bounded with an explicit refusal.
+`stable_twin.py` would have raised on `sac_best = None`, which is exactly the
+unsolved case; fixed, since there any length scores.
+
+**The sample is stratified by size, and that mattered.** `freshbeat --unsolved`
+previously took the smallest `count` challenges, which would have measured the
+easy tail and called it a find rate. It now takes one per size in rotation, and
+the 100-challenge sample came out at 3 or 4 challenges at **every** size from 13
+to 40.
+
+| sweep | targets | budget | keys | found |
+|---|---:|---:|---|---:|
+| stratified sample | 100 | 4,000,000 | lossy AND plain control | **0 and 0** |
+| budget escalation | 25 | 10,000,000 | lossy | **0** |
+| September, for reference | 32 | 2,000,000 | plain | 0 |
+
+**Zero, on both axes.** The key that triples the find rate on the arbitrage band
+(63 percent against 22) finds nothing at all here, and 2.5 times the budget
+changes nothing, so this is not the "weaker finder" story that explained the
+earlier zero sweeps on long records. The unsolved pool is hard for its own
+reason, and its median size of 24 - SMALLER than the solved median of 30 - said
+as much before the run.
+
+**But 0 of 100 does not close the economics, and saying so is the point.** The
+95 percent upper bound on the find rate from 0 of 100 is **2.95 percent**:
+
+| 0 finds in | 95% upper bound | implied finds over 2,672 | worth |
+|---:|---:|---:|---:|
+| 32 | 8.94% | 239 | 478 points |
+| 100 | **2.95%** | **79** | **158 points** |
+| 2,672 | 0.11% | 3 | 6 points |
+
+A rate anywhere under three percent is invisible in a hundred samples and would
+still be worth a hundred-odd points over the pool - which is rank 6 to 8
+territory, not a rounding error. **So this cell is BOUNDED, not closed**, and
+the only measurement that closes it is the whole pool: 2,672 challenges at 4M
+nodes, one mode, about **12.6 CPU-hours**, which on this machine is four to six
+hours wall-clock at two or three workers. That drives the bound to 0.11 percent.
+
+**That is the single best remaining bet in the campaign and it is cheap**, not
+because the rate is likely to be high but because it is the only place where the
+payoff per find is 2.0 instead of 2^(1-k), and the only open question is one
+that compute alone settles. Everything else on the list below needs a solver
+whose output ratio is near 1, which is a build.
+
 ### The frontier, stated so the next session does not start from the beginning
 
 The claim is that the missing capability is a FINDER, not a shortener, a box or a
@@ -2306,16 +2363,15 @@ what follows is what is left after them.
 - **The arbitrage is closed on the ratio**, not on reach: 2.2x minimum over 50
   finds against a 1.00-1.07 requirement. Re-testing it needs a solver whose
   output ratio is near 1, which is the same thing the whole campaign needs.
-- **Genuinely untested still: the lossy canonical key on the 2,672 unsolved
-  challenges.** 2,672 full points, where length does not matter at all - and
-  that is the one place a ratio of 4.9 is irrelevant. The only prior measurement
-  is 0 of 32 with the PLAIN key in September, and the plain key has just been
-  shown to find 22 percent where the lossy key finds 63 percent on comparable
-  hard presentations. **This is now the single most valuable untested cell, and
-  unlike everything else on this list it does not need the ratio to improve.**
-  The caution is that the unsolved pool's median size is 24, smaller than the
-  solved median, so it may be hard for a different reason - but that has never
-  been tested with this finder.
+- **The unsolved pool is now sampled, not untested: 0 of 100 stratified at 4M
+  and 0 of 25 at 10M, both keys.** What is left is only the bound - under 3
+  percent, which over 2,672 challenges is still up to 158 points. **Finishing
+  the sweep is the one remaining job that compute alone settles**: 12.6
+  CPU-hours at 4M nodes single-mode, four to six hours wall-clock at two or
+  three workers, and it drives the bound to 0.11 percent. Run it with
+  `freshbeat --unsolved --count 2672 --nodes 4000000 --slack 8 --depth 3
+  --modes 1`, in two or three shards via `--skip`, and pipe every find through
+  `stable_twin.py` before submitting - each one pays 1.0 on BOTH boards.
 - **The long-record band re-run with the lossy key**: 0 of 108 was measured at
   4M nodes with cap size + 8. The arbitrage band's finds mostly came in under
   2M nodes, so the budget was probably not the limit, but a cap walk on the

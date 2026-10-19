@@ -74,8 +74,27 @@ def pick(count, rec_lo, rec_hi, max_k, unsolved, skip, arb=False):
         if k <= max_k and rec_lo <= b <= rec_hi:
             rows.append(r)
     if unsolved:
-        # smallest first: size is the only lever we have on an unsolved case
+        # STRATIFIED by presentation size, not smallest-first. The unsolved
+        # pool runs size 13 to 40 with a median of 24, and taking the smallest
+        # `count` would measure the easy tail and call it a find rate.
         rows.sort(key=lambda r: sum(len(x) for x in r["relators"]))
+        if count and count < len(rows):
+            by_size = {}
+            for r in rows:
+                by_size.setdefault(sum(len(x) for x in r["relators"]),
+                                   []).append(r)
+            out, i = [], 0
+            while len(out) < count:
+                took = False
+                for s in sorted(by_size):
+                    bucket = by_size[s]
+                    if i < len(bucket) and len(out) < count:
+                        out.append(bucket[i])
+                        took = True
+                if not took:
+                    break
+                i += 1
+            rows = out
     elif arb:
         # most generous first: the biggest allowance over the ac record
         rows.sort(key=lambda r: -((r["sac_best"] - 3) / r["ac_best"]))
@@ -177,16 +196,19 @@ def main():
                      moves + [Destabilize(1), Destabilize(0)]]
             cands = [c for c in cands
                      if verify(Presentation(2, tuple(rels)), c, stable=True)]
-            if cands and sb is not None:
+            # sb is None exactly when nobody has solved the stable problem
+            # either, and then ANY verified path is a full point - all 2,672
+            # unsolved challenges are unsolved on both boards, so a single find
+            # is worth 1.0 twice over
+            if cands and (sb is None or len(min(cands, key=len)) <= sb):
                 st = min(cands, key=len)
-                if len(st) <= sb:
-                    stat[mode]["beat"] += len(st) < sb
-                    sol.write(json.dumps(
-                        {"id": r["id"], "problem": "stable_ac",
-                         "length": len(st),
-                         "moves": [move_to_json(m) for m in st],
-                         "record_at_find": sb, "mode": mode}) + "\n")
-                    wrote = True
+                stat[mode]["beat"] += sb is None or len(st) < sb
+                sol.write(json.dumps(
+                    {"id": r["id"], "problem": "stable_ac",
+                     "length": len(st),
+                     "moves": [move_to_json(m) for m in st],
+                     "record_at_find": sb, "mode": mode}) + "\n")
+                wrote = True
             if wrote:
                 sol.flush()
     sol.close()
