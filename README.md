@@ -40,6 +40,19 @@ search that is honest about where it stops.
 
 <br>
 
+## Paper
+
+The work in this repository is written up as a preprint, dated
+11 November 2026.
+
+> **Length as Priority, Not Constraint: Search Geometry of the Andrews-Curtis Challenge Pool**
+
+The compiled PDF is archived in the research index, at
+[`papers/III-andrews-curtis.pdf`](https://github.com/Amey-Thakur/SAIR-FOUNDATION-FOR-SCIENCE-AND-AI-RESEARCH/blob/main/papers/III-andrews-curtis.pdf). The index carries the preprint identifier
+once it is live, and lists the other four papers from this programme.
+
+---
+
 ## The problem
 
 A presentation is **balanced** when it has the same number of generators as
